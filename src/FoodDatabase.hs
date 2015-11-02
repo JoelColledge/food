@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, DeriveDataTypeable, ViewPatterns, TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies, DeriveDataTypeable, OverloadedStrings, ViewPatterns, TemplateHaskell #-}
 module FoodDatabase (
     DatabaseContext,
     open,
@@ -21,10 +21,13 @@ import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert)
 import Data.SafeCopy
 import Data.Typeable(Typeable)
 
+import Data.Map.Strict(Map)
+import qualified Data.Map.Strict as Map
+
 import Data.Text(Text)
 import qualified Data.Text as T(
   cons, uncons, break, drop, dropWhile, dropWhileEnd, pack, unpack, length,
-  append, replicate, intercalate, unlines)
+  append, replicate, intercalate, unlines, null)
 import qualified Data.Text.Read as T(decimal)
 import qualified Data.Text.IO as T(putStrLn)
 import qualified Data.Text.Lazy as TL(toStrict, lines)
@@ -32,35 +35,47 @@ import qualified Data.Text.Lazy.IO as TL(readFile)
 
 -- TODO: List (Ingredient, Maybe Quantity)
 
+newtype ID = ID { getID :: Int } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''ID)
+
+newtype Name = Name { getName :: Text } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Name)
+
+newtype Category = Category { getCategory :: Text } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Category)
+
 data RecipeSource = RecipeFolder
                   | RecipeBook Text (Maybe Int)
                   | RecipeOnline Text
                   | RecipeUnknown
-  deriving (Eq, Ord, Show)
-
+  deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''RecipeSource)
 
+newtype Ratings = Ratings { getRatings :: [Int] } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Ratings)
+
+newtype Properties = Properties { getProperties :: Map Text Text } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Properties)
+
 data Recipe = Recipe {
-    recipe_id :: Int,
-    recipe_name :: Text,
-    recipe_category :: Text,
+    recipe_id :: ID,
+    recipe_name :: Name,
+    recipe_category :: Category,
     recipe_source :: RecipeSource,
-    recipe_rating :: [Int],
-    recipe_prepMins :: Maybe Int,
-    recipe_totalMins :: Maybe Int,
+    recipe_ratings :: Ratings,
+    recipe_properties :: Properties,
     recipe_comments :: Text
   } deriving (Eq, Ord, Show, Typeable)
-
-newtype ID = ID Int
-  deriving (Eq, Ord, Show, Typeable)
-
-idIndexes :: Recipe -> [ID]
-idIndexes recipe = [ID $ recipe_id recipe]
+$(deriveSafeCopy 0 'base ''Recipe)
 
 instance Indexable Recipe where
-  empty = ixSet [ ixFun idIndexes ]
-
-$(deriveSafeCopy 0 'base ''Recipe)
+  empty = ixSet [
+      ixFun ((:[]) . recipe_id),
+      ixFun ((:[]) . recipe_name),
+      ixFun ((:[]) . recipe_category),
+      ixFun ((:[]) . recipe_source),
+      ixFun ((:[]) . recipe_ratings) -- Ord is lexicographic, not averaged. TODO
+    ]
 
 data FoodDatabase = FoodDatabase {
     db_recipes :: IxSet Recipe
@@ -104,13 +119,12 @@ getRecipes database = do
 --
 recipeToCells :: Recipe -> [Text]
 recipeToCells recipe =
-  map (\ f -> f recipe) [T.pack . show . recipe_id,
-    recipe_name,
-    recipe_category,
+  map (\ f -> f recipe) [T.pack . show . getID . recipe_id,
+    getName . recipe_name,
+    getCategory . recipe_category,
     T.pack . show . recipe_source,
-    T.pack . show . recipe_rating,
-    T.pack . show . recipe_prepMins,
-    T.pack . show . recipe_totalMins,
+    T.pack . show . getRatings . recipe_ratings,
+    T.pack . show . getProperties . recipe_properties,
     recipe_comments]
 
 columnWidths :: [[Text]] -> [Int]
@@ -118,10 +132,10 @@ columnWidths cols = map (maximum . map (T.length)) (transpose cols)
 
 showCell :: Text -> Int -> Text
 showCell text width = T.append text
-  (T.replicate (width - T.length text) (T.pack " "))
+  (T.replicate (width - T.length text) " ")
 
 showRow :: [(Text, Int)] -> Text
-showRow cells = T.intercalate (T.pack " | ") $ map (uncurry showCell) cells
+showRow cells = T.intercalate " | " $ map (uncurry showCell) cells
 
 showRecipeTable :: [Recipe] -> Text
 showRecipeTable recipes = T.unlines allRows
@@ -166,6 +180,11 @@ maybeDecimal text = squashLeft $ do
   (val,_) <- T.decimal text
   return val
 
+readProperties :: Text -> Text -> Properties
+readProperties prepMinsText totalMinsText = Properties $ Map.fromList $
+  filter (not . T.null . snd)
+    [("Prep minutes", prepMinsText), ("Total minutes", totalMinsText)]
+
 readCsvRecipe :: Text -> Either String Recipe
 readCsvRecipe line = case csvLineFields line of
   [idText,
@@ -179,13 +198,12 @@ readCsvRecipe line = case csvLineFields line of
     comments] -> do
       (idVal,_) <- T.decimal idText
       return (Recipe {
-        recipe_id = idVal,
-        recipe_name = name,
-        recipe_category = category,
+        recipe_id = ID idVal,
+        recipe_name = Name name,
+        recipe_category = Category category,
         recipe_source = readSource sourceText pageText,
-        recipe_rating = maybeToList $ maybeDecimal ratingText,
-        recipe_prepMins = maybeDecimal prepMinsText,
-        recipe_totalMins = maybeDecimal totalMinsText,
+        recipe_ratings = Ratings $ maybeToList $ maybeDecimal ratingText,
+        recipe_properties = readProperties prepMinsText totalMinsText,
         recipe_comments = comments})
   otherwise -> Left "Failed to match fields"
 

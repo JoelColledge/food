@@ -19,6 +19,7 @@ library
 
   other-extensions: DeriveDataTypeable
                     TypeFamilies
+                    OverloadedStrings
                     ViewPatterns
                     TemplateHaskell
 
@@ -27,4 +28,5 @@ library
                        safecopy,
                        mtl,
                        ixset,
-                       text
+                       text,
+                       containers
