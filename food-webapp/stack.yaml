@@ -6,9 +6,14 @@ resolver: lts-3.11
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
+- ../food-database/
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps: []
+extra-deps: [
+    acid-state-0.13.1,
+    ixset-1.0.6,
+    syb-with-class-0.6.1.6
+  ]
 
 # Override default flag values for local packages and extra-deps
 flags:
