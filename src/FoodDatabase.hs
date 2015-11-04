@@ -18,6 +18,7 @@ import System.Environment(getArgs)
 import Data.List(transpose)
 import Data.Maybe(maybeToList)
 import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert)
+import Data.Ratio( (%) , Rational)
 import Data.SafeCopy
 import Data.Typeable(Typeable)
 
@@ -68,13 +69,20 @@ data Recipe = Recipe {
   } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Recipe)
 
+newtype Rating = Rating { getRating :: Rational } deriving (Eq, Ord, Show, Typeable)
+computeRating :: Ratings -> Rating
+computeRating (length . getRatings -> 0) = Rating $ 0
+computeRating (getRatings -> ratings) = Rating $
+  fromIntegral (sum ratings) %
+    fromIntegral (length ratings)
+
 instance Indexable Recipe where
   empty = ixSet [
       ixFun ((:[]) . recipe_id),
       ixFun ((:[]) . recipe_name),
       ixFun ((:[]) . recipe_category),
       ixFun ((:[]) . recipe_source),
-      ixFun ((:[]) . recipe_ratings) -- Ord is lexicographic, not averaged. TODO
+      ixFun ((:[]) . computeRating . recipe_ratings)
     ]
 
 data FoodDatabase = FoodDatabase {
