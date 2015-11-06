@@ -45,6 +45,12 @@ getAdMaybeBook AdornedRecipe{..} = do
     (book_code, _) <- maybeBookCode adorned_recipe
     return (fromMaybe book_code (fst adorned_full_book))
 
+getAdMaybePage :: AdornedRecipe -> Maybe Int
+getAdMaybePage AdornedRecipe{..} = snd adorned_full_book
+
+getAdMaybeRating :: AdornedRecipe -> Maybe Int
+getAdMaybeRating AdornedRecipe{..} = FDB.ratingToMaybe $ FDB.recipe_rating adorned_recipe
+
 getAdComments :: AdornedRecipe -> Text
 getAdComments AdornedRecipe{..} = FDB.recipe_comments adorned_recipe
 

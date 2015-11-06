@@ -5,12 +5,17 @@ $maybe adRecipe <- maybeAdRecipe
 
   $maybe book <- getAdMaybeBook adRecipe
     <p> Book: #{book}
+      $maybe page <- getAdMaybePage adRecipe
+        \, Page: #{page}
   $nothing
     <p> Not from a book
 
   <p> #{getAdComments adRecipe}
 
-  <!--   $forall rating <- FDB.getRatings $ FDB.recipe_ratings recipe -->
-  <!--     <p>#{rating} -->
+  $maybe rating <- getAdMaybeRating adRecipe
+    <p> Rating: #{rating}
+  $nothing
+    <p> Unrated
+
 $nothing
   <h1>Unknown recipe
