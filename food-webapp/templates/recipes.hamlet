@@ -1,5 +1,17 @@
 <h1>Recipes
 
+<!--<h2>
+  $maybe (sortField) <- submission
+    <div .message .alert .alert-success>
+      #{show sortField}
+  $nothing
+    No submission-->
+
+<form method=post action=@{RecipesR}#form enctype=#{formEnctype}>
+  ^{formWidget}
+  <button .btn .btn-primary type="submit">
+      Update
+
 <table>
   <tbody>
     $forall recipe <- recipes
