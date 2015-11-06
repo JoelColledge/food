@@ -1,18 +1,18 @@
-$maybe adRecipe <- maybeAdRecipe
-  <h1> #{getAdName adRecipe}
+$maybe recipe <- maybeRecipe
+  <h1> #{getName recipe}
 
-  <p> #{getAdCategory adRecipe}
+  <p> #{getCategory recipe}
 
-  $maybe book <- getAdMaybeBook adRecipe
+  $maybe book <- getMaybeBook recipe
     <p> Book: #{book}
-      $maybe page <- getAdMaybePage adRecipe
+      $maybe page <- getMaybePage recipe
         \, Page: #{page}
   $nothing
     <p> Not from a book
 
-  <p> #{getAdComments adRecipe}
+  <p> #{getComments recipe}
 
-  $maybe rating <- getAdMaybeRating adRecipe
+  $maybe rating <- getMaybeRating recipe
     <p> Rating: #{rating}
   $nothing
     <p> Unrated

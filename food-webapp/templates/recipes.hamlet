@@ -2,9 +2,12 @@
 
 <table>
   <tbody>
-    $forall adRecipe <- adRecipes
+    $forall recipe <- recipes
       <tr>
-        <td> #{getAdName adRecipe}
-        <td> #{getAdCategory adRecipe}
+        <td> #{getName recipe}
+        <td> #{getCategory recipe}
         <td>
-          <a href=@{SingleRecipeR (getAdName adRecipe)}>Go
+          $maybe rating <- getMaybeRating recipe
+            #{rating}
+        <td>
+          <a href=@{SingleRecipeR (getName recipe)}>Go

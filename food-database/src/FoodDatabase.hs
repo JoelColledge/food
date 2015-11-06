@@ -4,8 +4,6 @@ module FoodDatabase (
     open,
     close,
     getRecipes,
-    getBooks,
-    getCategories,
     ID(..),
     Name(..),
     Category(..),
@@ -13,13 +11,13 @@ module FoodDatabase (
     Rating(..),
     Properties(..),
     Recipe(..),
-    BookMap(..),
-    CategoryMap(..),
+
     maybeToRating,
     ratingToMaybe,
-    importCsvRecipes,
-    importCsvBooks,
-    importCsvCategories
+
+    printRecipeTable,
+
+    importFullRecipes,
   ) where
 
 import Prelude
@@ -27,14 +25,15 @@ import Prelude
 import Data.Acid
 
 import Control.Arrow(second)
-import Control.Monad(when)
+-- import Control.Monad(when)
 import Control.Monad.State(get, put)
 import Control.Monad.Reader(ask)
-import Control.Applicative( (<$>) )
-import System.Environment(getArgs)
-import Data.List(transpose)
+-- import Control.Applicative( (<$>) )
+-- import System.Environment(getArgs)
 import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert)
-import Data.Ratio( (%) , Rational)
+import Data.List(transpose)
+import Data.Maybe(catMaybes)
+-- import Data.Ratio( (%) , Rational)
 import Data.SafeCopy
 import Data.Typeable(Typeable)
 
@@ -100,9 +99,7 @@ type BookMap = Map Text Text
 type CategoryMap = Map Text Text
 
 data FoodDatabase = FoodDatabase {
-    db_recipes :: IxSet Recipe,
-    db_books :: BookMap,
-    db_categories :: CategoryMap
+    db_recipes :: IxSet Recipe
   } deriving (Show)
 
 $(deriveSafeCopy 0 'base ''FoodDatabase)
@@ -114,63 +111,31 @@ type Context = AcidState FoodDatabase
 
 addRecipe :: Recipe -> Update FoodDatabase ()
 addRecipe recipe = do
-  foodDatabase <- get
-  put $ foodDatabase { db_recipes = insert recipe (db_recipes foodDatabase) }
+    foodDatabase <- get
+    put $ foodDatabase { db_recipes = insert recipe (db_recipes foodDatabase) }
 
 queryRecipes :: Query FoodDatabase (IxSet Recipe)
 queryRecipes = do
-  foodDatabase <- ask
-  return $ db_recipes foodDatabase
+    foodDatabase <- ask
+    return $ db_recipes foodDatabase
 
-addBook :: Text -> Text -> Update FoodDatabase ()
-addBook k a = do
-  foodDatabase <- get
-  put $ foodDatabase { db_books = Map.insert k a (db_books foodDatabase) }
-
-queryBooks :: Query FoodDatabase BookMap
-queryBooks = do
-  foodDatabase <- ask
-  return $ db_books foodDatabase
-
-addCategory :: Text -> Text -> Update FoodDatabase ()
-addCategory k a = do
-  foodDatabase <- get
-  put $ foodDatabase { db_categories = Map.insert k a (db_categories foodDatabase) }
-
-queryCategories :: Query FoodDatabase CategoryMap
-queryCategories = do
-  foodDatabase <- ask
-  return $ db_categories foodDatabase
-
--- Defines @QueryRecipes@, @AddRecipe@ etc
+-- Defines @QueryRecipes@, @AddRecipe@
 $(makeAcidic ''FoodDatabase [
-    'queryRecipes, 'addRecipe,
-    'queryBooks, 'addBook,
-    'queryCategories, 'addCategory
+    'queryRecipes, 'addRecipe
   ])
 
 open :: IO Context
 open = do
-  database <- openLocalStateFrom "myDatabase/" (FoodDatabase empty Map.empty Map.empty)
-  return database
+    database <- openLocalStateFrom "myDatabase/" (FoodDatabase empty)
+    return database
 
 close :: Context -> IO ()
 close database = closeAcidState database
 
 getRecipes :: Context -> IO (IxSet Recipe)
 getRecipes database = do
-  recipes <- query database QueryRecipes
-  return recipes
-
-getBooks :: Context -> IO (BookMap)
-getBooks database = do
-  books <- query database QueryBooks
-  return books
-
-getCategories :: Context -> IO (CategoryMap)
-getCategories database = do
-  categories <- query database QueryCategories
-  return categories
+    recipes <- query database QueryRecipes
+    return recipes
 
 --
 -- Helper functions
@@ -188,13 +153,13 @@ ratingToMaybe RatingNone = Nothing
 --
 recipeToCells :: Recipe -> [Text]
 recipeToCells recipe =
-  map (\ f -> f recipe) [T.pack . show . getID . recipe_id,
-    getName . recipe_name,
-    getCategory . recipe_category,
-    T.pack . show . recipe_source,
-    T.pack . show . recipe_rating,
-    T.pack . show . getProperties . recipe_properties,
-    recipe_comments]
+    map (\ f -> f recipe) [T.pack . show . getID . recipe_id,
+      getName . recipe_name,
+      getCategory . recipe_category,
+      T.pack . show . recipe_source,
+      T.pack . show . recipe_rating,
+      T.pack . show . getProperties . recipe_properties,
+      recipe_comments]
 
 columnWidths :: [[Text]] -> [Int]
 columnWidths cols = map (maximum . map (T.length)) (transpose cols)
@@ -221,6 +186,7 @@ printRecipeTable = T.putStrLn . showRecipeTable
 --
 csvLineFields :: Text -> [Text]
 csvLineFields = csvLineFields' . T.cons ','
+csvLineFields' :: Text -> [Text]
 csvLineFields' (T.uncons -> Nothing) = []
 csvLineFields' (T.uncons -> Just (',', cs)) = field : csvLineFields' rest
   where (field, rest) = csvField cs
@@ -240,79 +206,86 @@ trimSpace = T.dropWhile (==' ') . T.dropWhileEnd (==' ')
 
 maybeDecimal :: Integral a => Text -> Maybe a
 maybeDecimal text = squashLeft $ do
-  (val,_) <- T.decimal text
-  return val
+    (val,_) <- T.decimal text
+    return val
 
-importCsv :: UpdateEvent event =>
-  AcidState (EventState event) -> FilePath ->
-  (Text -> Either String a) -> (a -> event) -> IO ()
-importCsv database path lineReader updater = do
-  file <- TL.readFile path
-  mapM_ (addFromLine . TL.toStrict) (TL.lines file)
+readCsv :: FilePath -> (Text -> Either String a) -> IO [a]
+readCsv path lineReader = do
+    file <- TL.readFile path
+    maybeLineValues <- mapM (maybeReadLine . TL.toStrict) (TL.lines file)
+    return (catMaybes maybeLineValues)
   where
-    addFromLine line = case lineReader line of
-      Right lineValue -> do
-        update database (updater lineValue)
-        return ()
+    maybeReadLine line = case lineReader line of
+      Right lineValue -> return (Just lineValue)
       Left errorMsg -> do
         putStrLn (errorMsg ++ " (" ++ take 40 (T.unpack line) ++ ")")
+        return Nothing
 
 -- Recipes
-readSource :: Text -> Text -> RecipeSource
-readSource (T.uncons -> Nothing) _ = RecipeUnknown
-readSource (T.unpack -> "F") _ = RecipeFolder
-readSource sourceText pageText =
-  RecipeBook (trimSpace sourceText) (maybeDecimal pageText)
+readSource :: BookMap -> Text -> Text -> RecipeSource
+readSource _ (T.uncons -> Nothing) _ = RecipeUnknown
+readSource _ (T.unpack -> "F") _ = RecipeFolder
+readSource bookMap sourceText pageText =
+    RecipeBook (Map.findWithDefault bookCode bookCode bookMap) (maybeDecimal pageText)
+  where bookCode = trimSpace sourceText
 
 readProperties :: Text -> Text -> Properties
 readProperties prepMinsText totalMinsText = Properties $ Map.fromList $
-  filter (not . T.null . snd)
-    [("Prep minutes", prepMinsText), ("Total minutes", totalMinsText)]
+    filter (not . T.null . snd)
+      [("Prep minutes", prepMinsText), ("Total minutes", totalMinsText)]
 
-readCsvRecipe :: Text -> Either String Recipe
-readCsvRecipe line = case csvLineFields line of
-  [idText,
-    name,
-    category,
-    sourceText,
-    pageText,
-    ratingText,
-    prepMinsText,
-    totalMinsText,
-    comments] -> do
-      (idVal,_) <- T.decimal idText
-      return (Recipe {
-        recipe_id = ID idVal,
-        recipe_name = Name name,
-        recipe_category = Category category,
-        recipe_source = readSource sourceText pageText,
-        recipe_rating = maybeToRating $ maybeDecimal ratingText,
-        recipe_properties = readProperties prepMinsText totalMinsText,
-        recipe_comments = comments})
-  otherwise -> Left "Failed to match recipe fields"
+readCsvRecipe :: BookMap -> CategoryMap -> Text -> Either String Recipe
+readCsvRecipe bookMap categoryMap line = case csvLineFields line of
+    [idText,
+      name,
+      category,
+      sourceText,
+      pageText,
+      ratingText,
+      prepMinsText,
+      totalMinsText,
+      comments] -> do
+        (idVal,_) <- T.decimal idText
+        return (Recipe {
+          recipe_id = ID idVal,
+          recipe_name = Name name,
+          recipe_category = Category (Map.findWithDefault category category categoryMap),
+          recipe_source = readSource bookMap sourceText pageText,
+          recipe_rating = maybeToRating $ maybeDecimal ratingText,
+          recipe_properties = readProperties prepMinsText totalMinsText,
+          recipe_comments = comments})
+    _ -> Left "Failed to match recipe fields"
 
-importCsvRecipes :: Context -> FilePath -> IO ()
-importCsvRecipes database path =
-  importCsv database path readCsvRecipe AddRecipe
+readCsvRecipes :: Context -> BookMap -> CategoryMap -> FilePath -> IO ()
+readCsvRecipes database bookMap categoryMap path = do
+    recipes <- readCsv path (readCsvRecipe bookMap categoryMap)
+    mapM_ (update database . AddRecipe) recipes
 
 -- Books
 readCsvBook :: Text -> Either String (Text, Text)
 readCsvBook line = case csvLineFields line of
-  [bookCode,
-    bookName] -> Right (bookCode, bookName)
-  otherwise -> Left "Failed to match book fields"
+    [bookCode,
+      bookName] -> Right (bookCode, bookName)
+    _ -> Left "Failed to match book fields"
 
-importCsvBooks :: Context -> FilePath -> IO ()
-importCsvBooks database path =
-  importCsv database path readCsvBook (uncurry AddBook)
+readCsvBooks :: FilePath -> IO BookMap
+readCsvBooks path =
+    fmap Map.fromList $ readCsv path readCsvBook
 
 -- Categories
 readCsvCategory :: Text -> Either String (Text, Text)
 readCsvCategory line = case csvLineFields line of
-  [categoryCode,
-    categoryName] -> Right (categoryCode, categoryName)
-  otherwise -> Left "Failed to match category fields"
+    [categoryCode,
+      categoryName] -> Right (categoryCode, categoryName)
+    _ -> Left "Failed to match category fields"
 
-importCsvCategories :: Context -> FilePath -> IO ()
-importCsvCategories database path =
-  importCsv database path readCsvCategory (uncurry AddCategory)
+readCsvCategories :: FilePath -> IO CategoryMap
+readCsvCategories path =
+    fmap Map.fromList $ readCsv path readCsvCategory
+
+-- Together
+importFullRecipes :: Context -> FilePath -> FilePath -> FilePath -> IO ()
+importFullRecipes database bookPath categoryPath recipePath = do
+    bookMap <- readCsvBooks bookPath
+    categoryMap <- readCsvCategories categoryPath
+    readCsvRecipes database bookMap categoryMap recipePath

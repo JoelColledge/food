@@ -20,9 +20,7 @@ postHomeR = do
     ((_, formWidget), formEnctype) <- runFormPost sampleForm
 
     App {..} <- getYesod
-    liftIO (FDB.importCsvRecipes appDatabase "Recipes.csv")
-    liftIO (FDB.importCsvBooks appDatabase "Sources.csv")
-    liftIO (FDB.importCsvCategories appDatabase "Categories.csv")
+    liftIO (FDB.importFullRecipes appDatabase "Sources.csv" "Categories.csv" "Recipes.csv")
 
     let imported = True
 
