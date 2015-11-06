@@ -1,0 +1,24 @@
+Database architecture
+---------------------
+
+recipes: IxSet Recipe (including ingredients, servings and size (WxH or disc(D)))
+source book names: Map Text Text -- not guaranteed to contain all
+category names: Map Text Text -- not guaranteed to contain all
+products: IxSet Product {
+  general name,
+  provides ingredient,
+  price observations [(shop, price)] }
+
+
+Interface
+---------
+
+Goals
+~~~~~
+
+Input data from a receipt with minimal effort
+
+Approach
+~~~~~~~~
+
+Allow scaling ingredients by an arbitrary factor as well as relative to serves or size

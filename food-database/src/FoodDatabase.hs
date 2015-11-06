@@ -1,11 +1,26 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, OverloadedStrings, ViewPatterns, TemplateHaskell #-}
 module FoodDatabase (
-    DatabaseContext,
+    Context,
     open,
     close,
     getRecipes,
-    ID,
+    getBooks,
+    getCategories,
+    ID(..),
+    Name(..),
+    Category(..),
+    RecipeSource(..),
+    Ratings(..),
+    Properties(..),
+    Recipe(..),
+    BookMap(..),
+    CategoryMap(..),
+    importCsvRecipes,
+    importCsvBooks,
+    importCsvCategories
   ) where
+
+import Prelude
 
 import Data.Acid
 
@@ -85,42 +100,82 @@ instance Indexable Recipe where
       ixFun ((:[]) . computeRating . recipe_ratings)
     ]
 
+type BookMap = Map Text Text
+
+type CategoryMap = Map Text Text
+
 data FoodDatabase = FoodDatabase {
-    db_recipes :: IxSet Recipe
+    db_recipes :: IxSet Recipe,
+    db_books :: BookMap,
+    db_categories :: CategoryMap
   } deriving (Show)
 
 $(deriveSafeCopy 0 'base ''FoodDatabase)
 
-type DatabaseContext = AcidState FoodDatabase
+type Context = AcidState FoodDatabase
 
 -- Transactions are defined to run in either the 'Update' monad
 -- or the 'Query' monad.
 
 addRecipe :: Recipe -> Update FoodDatabase ()
 addRecipe recipe = do
-  FoodDatabase recipes <- get
-  put $ FoodDatabase (insert recipe recipes)
+  foodDatabase <- get
+  put $ foodDatabase { db_recipes = insert recipe (db_recipes foodDatabase) }
 
 queryRecipes :: Query FoodDatabase (IxSet Recipe)
 queryRecipes = do
-  FoodDatabase recipes <- ask
-  return $ recipes
+  foodDatabase <- ask
+  return $ db_recipes foodDatabase
 
--- Defines @QueryRecipes@ and @AddRecipe@.
-$(makeAcidic ''FoodDatabase ['queryRecipes, 'addRecipe])
+addBook :: Text -> Text -> Update FoodDatabase ()
+addBook k a = do
+  foodDatabase <- get
+  put $ foodDatabase { db_books = Map.insert k a (db_books foodDatabase) }
 
-open :: IO DatabaseContext
+queryBooks :: Query FoodDatabase BookMap
+queryBooks = do
+  foodDatabase <- ask
+  return $ db_books foodDatabase
+
+addCategory :: Text -> Text -> Update FoodDatabase ()
+addCategory k a = do
+  foodDatabase <- get
+  put $ foodDatabase { db_categories = Map.insert k a (db_categories foodDatabase) }
+
+queryCategories :: Query FoodDatabase CategoryMap
+queryCategories = do
+  foodDatabase <- ask
+  return $ db_categories foodDatabase
+
+-- Defines @QueryRecipes@, @AddRecipe@ etc
+$(makeAcidic ''FoodDatabase [
+    'queryRecipes, 'addRecipe,
+    'queryBooks, 'addBook,
+    'queryCategories, 'addCategory
+  ])
+
+open :: IO Context
 open = do
-  database <- openLocalStateFrom "myDatabase/" (FoodDatabase empty)
+  database <- openLocalStateFrom "myDatabase/" (FoodDatabase empty Map.empty Map.empty)
   return database
 
-close :: DatabaseContext -> IO ()
+close :: Context -> IO ()
 close database = closeAcidState database
 
-getRecipes :: DatabaseContext -> IO (IxSet Recipe)
+getRecipes :: Context -> IO (IxSet Recipe)
 getRecipes database = do
   recipes <- query database QueryRecipes
   return recipes
+
+getBooks :: Context -> IO (BookMap)
+getBooks database = do
+  books <- query database QueryBooks
+  return books
+
+getCategories :: Context -> IO (CategoryMap)
+getCategories database = do
+  categories <- query database QueryCategories
+  return categories
 
 --
 -- Pretty printing
@@ -177,16 +232,31 @@ squashLeft (Right b) = Just b
 trimSpace :: Text -> Text
 trimSpace = T.dropWhile (==' ') . T.dropWhileEnd (==' ')
 
+maybeDecimal :: Integral a => Text -> Maybe a
+maybeDecimal text = squashLeft $ do
+  (val,_) <- T.decimal text
+  return val
+
+importCsv :: UpdateEvent event =>
+  AcidState (EventState event) -> FilePath ->
+  (Text -> Either String a) -> (a -> event) -> IO ()
+importCsv database path lineReader updater = do
+  file <- TL.readFile path
+  mapM_ (addFromLine . TL.toStrict) (TL.lines file)
+  where
+    addFromLine line = case lineReader line of
+      Right lineValue -> do
+        update database (updater lineValue)
+        return ()
+      Left errorMsg -> do
+        putStrLn (errorMsg ++ " (" ++ take 40 (T.unpack line) ++ ")")
+
+-- Recipes
 readSource :: Text -> Text -> RecipeSource
 readSource (T.uncons -> Nothing) _ = RecipeUnknown
 readSource (T.unpack -> "F") _ = RecipeFolder
 readSource sourceText pageText =
   RecipeBook (trimSpace sourceText) (maybeDecimal pageText)
-
-maybeDecimal :: Integral a => Text -> Maybe a
-maybeDecimal text = squashLeft $ do
-  (val,_) <- T.decimal text
-  return val
 
 readProperties :: Text -> Text -> Properties
 readProperties prepMinsText totalMinsText = Properties $ Map.fromList $
@@ -213,15 +283,30 @@ readCsvRecipe line = case csvLineFields line of
         recipe_ratings = Ratings $ maybeToList $ maybeDecimal ratingText,
         recipe_properties = readProperties prepMinsText totalMinsText,
         recipe_comments = comments})
-  otherwise -> Left "Failed to match fields"
+  otherwise -> Left "Failed to match recipe fields"
 
-importCsvRecipes :: DatabaseContext -> FilePath -> IO ()
-importCsvRecipes database path = do
-  file <- TL.readFile path
-  mapM_ (addRecipeLine . TL.toStrict) (TL.lines file)
-  where
-    addRecipeLine line = case readCsvRecipe line of
-      Right recipe -> do
---         putStrLn $ "Adding recipe: " ++ (show recipe)
-        update database (AddRecipe recipe)
-      Left errorMsg -> putStrLn (errorMsg ++ " (" ++ take 40 (T.unpack line) ++ ")")
+importCsvRecipes :: Context -> FilePath -> IO ()
+importCsvRecipes database path =
+  importCsv database path readCsvRecipe AddRecipe
+
+-- Books
+readCsvBook :: Text -> Either String (Text, Text)
+readCsvBook line = case csvLineFields line of
+  [bookCode,
+    bookName] -> Right (bookCode, bookName)
+  otherwise -> Left "Failed to match book fields"
+
+importCsvBooks :: Context -> FilePath -> IO ()
+importCsvBooks database path =
+  importCsv database path readCsvBook (uncurry AddBook)
+
+-- Categories
+readCsvCategory :: Text -> Either String (Text, Text)
+readCsvCategory line = case csvLineFields line of
+  [categoryCode,
+    categoryName] -> Right (categoryCode, categoryName)
+  otherwise -> Left "Failed to match category fields"
+
+importCsvCategories :: Context -> FilePath -> IO ()
+importCsvCategories database path =
+  importCsv database path readCsvCategory (uncurry AddCategory)

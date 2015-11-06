@@ -23,10 +23,10 @@ library
                     ViewPatterns
                     TemplateHaskell
 
-  build-depends:       base >= 4.7 && < 5,
-                       acid-state,
-                       safecopy,
-                       mtl,
-                       ixset,
-                       text,
-                       containers
+  build-depends: base >= 4.7 && < 5
+               , acid-state
+               , safecopy
+               , mtl
+               , ixset
+               , text
+               , containers

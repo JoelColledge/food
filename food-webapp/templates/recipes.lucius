@@ -15,3 +15,6 @@ footer {
 .input-sm {
     margin-left: 20px
 }
+table tr:nth-child(even) {
+    background-color: #e4e4e4;
+}

@@ -1,0 +1,10 @@
+<h1>Recipes
+
+<table>
+  <tbody>
+    $forall adRecipe <- adRecipes
+      <tr>
+        <td> #{getAdName adRecipe}
+        <td> #{getAdCategory adRecipe}
+        <td>
+          <a href=@{SingleRecipeR (getAdName adRecipe)}>Go

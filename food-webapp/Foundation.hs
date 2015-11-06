@@ -1,6 +1,7 @@
 module Foundation where
 
 import Import.NoFoundation
+import qualified FoodDatabase as FDB
 import Text.Hamlet                 (hamletFile)
 import Text.Jasmine                (minifym)
 import Yesod.Core.Types            (Logger)
@@ -14,6 +15,7 @@ import qualified Yesod.Core.Unsafe as Unsafe
 data App = App
     { appSettings    :: AppSettings
     , appStatic      :: Static -- ^ Settings for static file serving.
+    , appDatabase    :: FDB.Context -- ^ Database context.
     , appHttpManager :: Manager
     , appLogger      :: Logger
     }
@@ -42,7 +44,7 @@ type Form x = Html -> MForm (HandlerT App IO) (FormResult x, Widget)
 instance Yesod App where
     -- Controls the base of generated URLs. For more information on modifying,
     -- see: https://github.com/yesodweb/yesod/wiki/Overriding-approot
-    approot = ApprootMaster $ appRoot . appSettings
+    approot = ApprootRelative -- ApprootMaster $ appRoot . appSettings
 
     -- Store session data on the client in encrypted cookies,
     -- default session idle timeout is 120 minutes

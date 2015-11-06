@@ -4,3 +4,5 @@
 /robots.txt RobotsR GET
 
 / HomeR GET POST
+/recipes RecipesR GET
+/recipes/#Text SingleRecipeR GET
