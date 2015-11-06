@@ -10,11 +10,13 @@ module FoodDatabase (
     Name(..),
     Category(..),
     RecipeSource(..),
-    Ratings(..),
+    Rating(..),
     Properties(..),
     Recipe(..),
     BookMap(..),
     CategoryMap(..),
+    maybeToRating,
+    ratingToMaybe,
     importCsvRecipes,
     importCsvBooks,
     importCsvCategories
@@ -31,7 +33,6 @@ import Control.Monad.Reader(ask)
 import Control.Applicative( (<$>) )
 import System.Environment(getArgs)
 import Data.List(transpose)
-import Data.Maybe(maybeToList)
 import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert)
 import Data.Ratio( (%) , Rational)
 import Data.SafeCopy
@@ -67,8 +68,9 @@ data RecipeSource = RecipeFolder
   deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''RecipeSource)
 
-newtype Ratings = Ratings { getRatings :: [Int] } deriving (Eq, Ord, Show, Typeable)
-$(deriveSafeCopy 0 'base ''Ratings)
+data Rating = Rating { getRating :: Int }
+            | RatingNone deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Rating)
 
 newtype Properties = Properties { getProperties :: Map Text Text } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Properties)
@@ -78,18 +80,11 @@ data Recipe = Recipe {
     recipe_name :: Name,
     recipe_category :: Category,
     recipe_source :: RecipeSource,
-    recipe_ratings :: Ratings,
+    recipe_rating :: Rating,
     recipe_properties :: Properties,
     recipe_comments :: Text
   } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Recipe)
-
-newtype Rating = Rating { getRating :: Rational } deriving (Eq, Ord, Show, Typeable)
-computeRating :: Ratings -> Rating
-computeRating (length . getRatings -> 0) = Rating $ 0
-computeRating (getRatings -> ratings) = Rating $
-  fromIntegral (sum ratings) %
-    fromIntegral (length ratings)
 
 instance Indexable Recipe where
   empty = ixSet [
@@ -97,7 +92,7 @@ instance Indexable Recipe where
       ixFun ((:[]) . recipe_name),
       ixFun ((:[]) . recipe_category),
       ixFun ((:[]) . recipe_source),
-      ixFun ((:[]) . computeRating . recipe_ratings)
+      ixFun ((:[]) . recipe_rating)
     ]
 
 type BookMap = Map Text Text
@@ -178,6 +173,17 @@ getCategories database = do
   return categories
 
 --
+-- Helper functions
+--
+maybeToRating :: Maybe Int -> Rating
+maybeToRating (Just a) = Rating a
+maybeToRating Nothing = RatingNone
+
+ratingToMaybe :: Rating -> Maybe Int
+ratingToMaybe (Rating a) = Just a
+ratingToMaybe RatingNone = Nothing
+
+--
 -- Pretty printing
 --
 recipeToCells :: Recipe -> [Text]
@@ -186,7 +192,7 @@ recipeToCells recipe =
     getName . recipe_name,
     getCategory . recipe_category,
     T.pack . show . recipe_source,
-    T.pack . show . getRatings . recipe_ratings,
+    T.pack . show . recipe_rating,
     T.pack . show . getProperties . recipe_properties,
     recipe_comments]
 
@@ -280,7 +286,7 @@ readCsvRecipe line = case csvLineFields line of
         recipe_name = Name name,
         recipe_category = Category category,
         recipe_source = readSource sourceText pageText,
-        recipe_ratings = Ratings $ maybeToList $ maybeDecimal ratingText,
+        recipe_rating = maybeToRating $ maybeDecimal ratingText,
         recipe_properties = readProperties prepMinsText totalMinsText,
         recipe_comments = comments})
   otherwise -> Left "Failed to match recipe fields"
