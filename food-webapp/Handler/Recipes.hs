@@ -53,7 +53,7 @@ getRecipesR = do
     recipeSet <- liftIO (FDB.getRecipes appDatabase)
     recipeCategories <- liftIO (FDB.getCategories appDatabase)
 
-    ((result, formWidget), formEnctype) <- runFormGet (sampleForm recipeCategories)
+    ((result, formWidget), formEnctype) <- runFormGet (filterForm recipeCategories)
 
     let sortField = case result of
             FormSuccess (s,_) -> s
@@ -74,11 +74,28 @@ getRecipesR = do
         setTitle "Recipes"
         $(widgetFile "recipes")
 
+postRecipesR :: Handler ()
+postRecipesR = do
+    App {..} <- getYesod
+    recipeCategories <- liftIO (FDB.getCategories appDatabase)
+
+    ((result, formWidget), formEnctype) <- runFormPost (addForm recipeCategories)
+    putStrLn "postRecipesR running"
+    print (result)
+
+    case result of
+      FormSuccess (name, category) -> do
+        liftIO (FDB.insertRecipe appDatabase (FDB.emptyRecipe { FDB.recipe_name = FDB.Name name, FDB.recipe_category = FDB.Category category }))
+
+      _ -> putStrLn "Recipe post failed" -- TODO: Allow input to be attempted again
+
+    redirect RecipesR
+
 dupe :: a -> (a, a)
 dupe x = (x, x)
 
-sampleForm :: [Text] -> Form (SortField, Maybe Text)
-sampleForm categories = renderBootstrap3 BootstrapBasicForm $ (,)
+filterForm :: [Text] -> Form (SortField, Maybe Text)
+filterForm categories = renderBootstrap3 BootstrapBasicForm $ (,)
     <$> sortField
     <*> categoryFilterField
   where
@@ -101,3 +118,35 @@ getSingleRecipeR text = do
     defaultLayout $ do
         setTitle (toHtml text)
         $(widgetFile "single-recipe")
+
+getAddRecipeR :: Handler Html
+getAddRecipeR = do
+    App {..} <- getYesod
+    recipeCategories <- liftIO (FDB.getCategories appDatabase)
+
+    (formWidget, formEnctype) <- generateFormPost (addForm recipeCategories)
+
+    defaultLayout $ do
+        setTitle "Add recipe"
+        $(widgetFile "add-recipe")
+
+addForm :: [Text] -> Form (Text, Text)
+addForm categories = renderBootstrap3 BootstrapBasicForm $ (,)
+    <$> nameField
+    <*> categoryField
+  where
+    nameField = areq
+      textField
+      (bfs ("Name" :: Text))
+      Nothing
+
+    categoryField = areq
+      (selectFieldList (map dupe categories))
+      (bfs ("Category" :: Text)) -- TODO: Add the 'mutiple' parameter with no value, might involve customising Yesod Forms
+      Nothing
+
+    -- TODO: Allow creation of new categories
+    -- e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php
+
+    -- TODO: Source, ingredients
+    -- TODO: Give another way of modifying rating, properties, comments, category, ???name

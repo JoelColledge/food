@@ -4,6 +4,7 @@ module FoodDatabase (
     open,
     close,
     getRecipes,
+    insertRecipe,
     getCategories,
     ID(..),
     Name(..),
@@ -13,6 +14,7 @@ module FoodDatabase (
     Properties(..),
     Recipe(..),
 
+    emptyRecipe,
     maybeToRating,
     ratingToMaybe,
 
@@ -140,6 +142,10 @@ getRecipes database = do
     recipes <- query database QueryRecipes
     return recipes
 
+insertRecipe :: Context -> Recipe -> IO ()
+insertRecipe database recipe = do
+    update database (AddRecipe recipe)
+
 uniqueCategories :: IxSet Recipe -> [Text]
 uniqueCategories recipeSet =
     nub $
@@ -155,6 +161,10 @@ getCategories database = do
 --
 -- Helper functions
 --
+emptyRecipe :: Recipe
+emptyRecipe = Recipe (ID 0) (Name "") (Category "")
+    RecipeUnknown RatingNone (Properties Map.empty) ""
+
 maybeToRating :: Maybe Int -> Rating
 maybeToRating (Just a) = Rating a
 maybeToRating Nothing = RatingNone
