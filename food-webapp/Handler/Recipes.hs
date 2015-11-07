@@ -2,7 +2,7 @@ module Handler.Recipes where
 
 import Import
 import Yesod.Form.Bootstrap3 (BootstrapFormLayout (..), renderBootstrap3,
-                              withSmallInput)
+                              bfs)
 
 -- import Data.Maybe(fromMaybe)
 
@@ -49,42 +49,48 @@ data SortField = Name | Category | Rating
 --
 getRecipesR :: Handler Html
 getRecipesR = do
-    (formWidget, formEnctype) <- generateFormPost sampleForm
---     let submission = Nothing :: Maybe (SortField, Text)
-
     App {..} <- getYesod
     recipeSet <- liftIO (FDB.getRecipes appDatabase)
-    let recipes = IxSet.toList recipeSet
+    recipeCategories <- liftIO (FDB.getCategories appDatabase)
 
-    defaultLayout $ do
-        setTitle "Recipes"
-        $(widgetFile "recipes")
+    ((result, formWidget), formEnctype) <- runFormGet (sampleForm recipeCategories)
 
-postRecipesR :: Handler Html
-postRecipesR = do
-    ((result, formWidget), formEnctype) <- runFormPost sampleForm
     let sortField = case result of
-            FormSuccess s -> s
+            FormSuccess (s,_) -> s
             _ -> Name
+
+    let categoryFilter = case result of
+            FormSuccess (_, Just c) -> (@= FDB.Category c)
+            _ -> id
 
     let sorter = case sortField of
             Name -> IxSet.toAscList (IxSet.Proxy :: IxSet.Proxy FDB.Name)
             Category -> IxSet.toAscList (IxSet.Proxy :: IxSet.Proxy FDB.Category)
             Rating -> IxSet.toDescList (IxSet.Proxy :: IxSet.Proxy FDB.Rating)
 
-    App {..} <- getYesod
-    recipeSet <- liftIO (FDB.getRecipes appDatabase)
-    let recipes = sorter recipeSet
+    let recipes = sorter $ categoryFilter recipeSet
 
     defaultLayout $ do
         setTitle "Recipes"
         $(widgetFile "recipes")
 
-sampleForm :: Form (SortField)
-sampleForm = renderBootstrap3 BootstrapBasicForm $ {-(,)-}
-    {-<$> -}areq (selectField optionsEnum) "Sort by" (Just Name)
---     <*> areq textField (withSmallInput "Message") Nothing
+dupe :: a -> (a, a)
+dupe x = (x, x)
 
+sampleForm :: [Text] -> Form (SortField, Maybe Text)
+sampleForm categories = renderBootstrap3 BootstrapBasicForm $ (,)
+    <$> sortField
+    <*> categoryFilterField
+  where
+    sortField = areq
+      (selectField optionsEnum)
+      (bfs ("Sort by: " :: Text))
+      (Just Name)
+
+    categoryFilterField = aopt
+      (selectFieldList (map dupe categories))
+      (bfs ("Category filter: " :: Text)) -- TODO: Add the 'mutiple' parameter with no value, might involve customising Yesod Forms
+      Nothing
 
 getSingleRecipeR :: Text -> Handler Html
 getSingleRecipeR text = do

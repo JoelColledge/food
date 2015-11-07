@@ -4,6 +4,7 @@ module FoodDatabase (
     open,
     close,
     getRecipes,
+    getCategories,
     ID(..),
     Name(..),
     Category(..),
@@ -20,6 +21,8 @@ module FoodDatabase (
     importFullRecipes,
   ) where
 
+import Debug.Trace(trace)
+
 import Prelude
 
 import Data.Acid
@@ -30,8 +33,8 @@ import Control.Monad.State(get, put)
 import Control.Monad.Reader(ask)
 -- import Control.Applicative( (<$>) )
 -- import System.Environment(getArgs)
-import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert)
-import Data.List(transpose)
+import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert, toList)
+import Data.List(nub, transpose)
 import Data.Maybe(catMaybes)
 -- import Data.Ratio( (%) , Rational)
 import Data.SafeCopy
@@ -116,7 +119,7 @@ addRecipe recipe = do
 
 queryRecipes :: Query FoodDatabase (IxSet Recipe)
 queryRecipes = do
-    foodDatabase <- ask
+    foodDatabase <- trace "Asking for db" $ ask
     return $ db_recipes foodDatabase
 
 -- Defines @QueryRecipes@, @AddRecipe@
@@ -136,6 +139,18 @@ getRecipes :: Context -> IO (IxSet Recipe)
 getRecipes database = do
     recipes <- query database QueryRecipes
     return recipes
+
+uniqueCategories :: IxSet Recipe -> [Text]
+uniqueCategories recipeSet =
+    nub $
+      map (getCategory . recipe_category) $
+        toList recipeSet
+
+-- TODO: cache list?
+getCategories :: Context -> IO [Text]
+getCategories database = do
+    recipeSet <- getRecipes database
+    return $ uniqueCategories recipeSet
 
 --
 -- Helper functions

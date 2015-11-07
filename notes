@@ -2,13 +2,13 @@ Database architecture
 ---------------------
 
 recipes: IxSet Recipe (including ingredients, servings and size (WxH or disc(D)))
-source book names: Map Text Text -- not guaranteed to contain all
-category names: Map Text Text -- not guaranteed to contain all
 products: IxSet Product {
   general name,
   provides ingredient,
   price observations [(shop, price)] }
 
+Should we need to store the recipe set in the db context - otherwise won't it
+be loaded afresh every time?
 
 Interface
 ---------
@@ -17,6 +17,9 @@ Goals
 ~~~~~
 
 Input data from a receipt with minimal effort
+Filter by category
+Sort by rating and perhaps other fields
+Show/sort by entry time/seq
 
 Approach
 ~~~~~~~~

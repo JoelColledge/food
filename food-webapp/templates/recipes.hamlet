@@ -7,12 +7,12 @@
   $nothing
     No submission-->
 
-<form method=post action=@{RecipesR}#form enctype=#{formEnctype}>
+<form method=get action=@{RecipesR}#form enctype=#{formEnctype}>
   ^{formWidget}
   <button .btn .btn-primary type="submit">
       Update
 
-<table>
+<table .table .table-striped>
   <tbody>
     $forall recipe <- recipes
       <tr>
