@@ -1,12 +1,14 @@
 <h1>Recipes
 
-<form method=get action=@{RecipesR} enctype=#{formEnctype}>
-  ^{formWidget}
-  <button .btn .btn-primary type="submit">
-      Update
+<p>
+  <form method=get action=@{RecipesR} enctype=#{formEnctype}>
+    ^{formWidget}
+    <button .btn .btn-primary type="submit">
+        Update
 
-<a .btn .btn-default href=@{AddRecipeR} role="button">
-  Add Recipe
+<p>
+  <a .btn .btn-default href=@{AddRecipeR} role="button">
+    Add Recipe
 
 <table .table .table-striped>
   <tbody>

@@ -4,7 +4,7 @@ module FoodDatabase (
     open,
     close,
     getRecipes,
-    insertRecipe,
+    setRecipe,
     getCategories,
     ID(..),
     Name(..),
@@ -35,7 +35,7 @@ import Control.Monad.State(get, put)
 import Control.Monad.Reader(ask)
 -- import Control.Applicative( (<$>) )
 -- import System.Environment(getArgs)
-import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert, toList)
+import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert, updateIx, toList)
 import Data.List(nub, transpose)
 import Data.Maybe(catMaybes)
 -- import Data.Ratio( (%) , Rational)
@@ -119,14 +119,20 @@ addRecipe recipe = do
     foodDatabase <- get
     put $ foodDatabase { db_recipes = insert recipe (db_recipes foodDatabase) }
 
+-- Update a recipe with a given name, or create it if none exists
+updateRecipe :: Name -> Recipe -> Update FoodDatabase ()
+updateRecipe name recipe = do
+    foodDatabase <- get
+    put $ foodDatabase { db_recipes = updateIx name recipe (db_recipes foodDatabase) }
+
 queryRecipes :: Query FoodDatabase (IxSet Recipe)
 queryRecipes = do
     foodDatabase <- trace "Asking for db" $ ask
     return $ db_recipes foodDatabase
 
--- Defines @QueryRecipes@, @AddRecipe@
+-- Defines @QueryRecipes@, @AddRecipe@, @UpdateRecipe@
 $(makeAcidic ''FoodDatabase [
-    'queryRecipes, 'addRecipe
+    'queryRecipes, 'addRecipe, 'updateRecipe
   ])
 
 open :: IO Context
@@ -142,9 +148,10 @@ getRecipes database = do
     recipes <- query database QueryRecipes
     return recipes
 
-insertRecipe :: Context -> Recipe -> IO ()
-insertRecipe database recipe = do
-    update database (AddRecipe recipe)
+-- Set a recipe with a given name
+setRecipe :: Context -> Text -> Recipe -> IO ()
+setRecipe database name recipe = do
+    update database (UpdateRecipe (Name name) recipe)
 
 uniqueCategories :: IxSet Recipe -> [Text]
 uniqueCategories recipeSet =

@@ -74,23 +74,6 @@ getRecipesR = do
         setTitle "Recipes"
         $(widgetFile "recipes")
 
-postRecipesR :: Handler ()
-postRecipesR = do
-    App {..} <- getYesod
-    recipeCategories <- liftIO (FDB.getCategories appDatabase)
-
-    ((result, formWidget), formEnctype) <- runFormPost (addForm recipeCategories)
-    putStrLn "postRecipesR running"
-    print (result)
-
-    case result of
-      FormSuccess (name, category) -> do
-        liftIO (FDB.insertRecipe appDatabase (FDB.emptyRecipe { FDB.recipe_name = FDB.Name name, FDB.recipe_category = FDB.Category category }))
-
-      _ -> putStrLn "Recipe post failed" -- TODO: Allow input to be attempted again
-
-    redirect RecipesR
-
 dupe :: a -> (a, a)
 dupe x = (x, x)
 
@@ -109,41 +92,78 @@ filterForm categories = renderBootstrap3 BootstrapBasicForm $ (,)
       (bfs ("Category filter: " :: Text)) -- TODO: Add the 'mutiple' parameter with no value, might involve customising Yesod Forms
       Nothing
 
+data RecipeFormType = NewRecipe
+                    | UpdateRecipe Text
+  deriving (Eq, Show, Read)
+
 getSingleRecipeR :: Text -> Handler Html
 getSingleRecipeR text = do
     App {..} <- getYesod
     recipeSet <- liftIO (FDB.getRecipes appDatabase)
     let maybeRecipe = IxSet.getOne (recipeSet @= FDB.Name text)
+    let baseRecipe = fromMaybe (FDB.emptyRecipe { FDB.recipe_name = FDB.Name text }) maybeRecipe
 
-    defaultLayout $ do
-        setTitle (toHtml text)
-        $(widgetFile "single-recipe")
+    getRecipeForm (UpdateRecipe text) text (Just baseRecipe)
+
+postSingleRecipeR :: Text -> Handler Html
+postSingleRecipeR text = do
+    postRecipeForm (UpdateRecipe text) text (Just text)
 
 getAddRecipeR :: Handler Html
 getAddRecipeR = do
+    getRecipeForm NewRecipe "Add recipe" Nothing
+
+postAddRecipeR :: Handler Html
+postAddRecipeR = do
+    postRecipeForm NewRecipe "Add recipe" Nothing
+
+getRecipeForm :: RecipeFormType -> Text -> Maybe FDB.Recipe -> Handler Html
+getRecipeForm formType title maybeRecipe = do
     App {..} <- getYesod
     recipeCategories <- liftIO (FDB.getCategories appDatabase)
 
-    (formWidget, formEnctype) <- generateFormPost (addForm recipeCategories)
+    (formWidget, formEnctype) <- generateFormPost (recipeForm recipeCategories maybeRecipe)
 
     defaultLayout $ do
-        setTitle "Add recipe"
-        $(widgetFile "add-recipe")
+        setTitle (toHtml title)
+        $(widgetFile "recipe-editor")
 
-addForm :: [Text] -> Form (Text, Text)
-addForm categories = renderBootstrap3 BootstrapBasicForm $ (,)
+postRecipeForm :: RecipeFormType -> Text -> Maybe Text -> Handler Html
+postRecipeForm formType title priorName = do
+    App {..} <- getYesod
+    recipeCategories <- liftIO (FDB.getCategories appDatabase)
+
+    -- Field defaults don't matter for a failed post
+    ((result, formWidget), formEnctype) <- runFormPost (recipeForm recipeCategories Nothing)
+
+    case result of
+      FormSuccess (name, category) -> do
+        let indexName = fromMaybe name priorName
+        let newRecipe = FDB.emptyRecipe { FDB.recipe_name = FDB.Name name, FDB.recipe_category = FDB.Category category }
+        liftIO (FDB.setRecipe appDatabase indexName newRecipe)
+        redirect RecipesR
+
+      _ -> do
+        putStrLn "Recipe post failed"
+        -- TODO: Explain errors
+        defaultLayout $ do
+            setTitle (toHtml title)
+            $(widgetFile "recipe-editor")
+
+recipeForm :: [Text] -> Maybe FDB.Recipe -> Form (Text, Text)
+recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,)
     <$> nameField
     <*> categoryField
   where
     nameField = areq
       textField
       (bfs ("Name" :: Text))
-      Nothing
+      (fmap getName maybeRecipe)
 
     categoryField = areq
       (selectFieldList (map dupe categories))
       (bfs ("Category" :: Text)) -- TODO: Add the 'mutiple' parameter with no value, might involve customising Yesod Forms
-      Nothing
+      (fmap getCategory maybeRecipe)
 
     -- TODO: Allow creation of new categories
     -- e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php

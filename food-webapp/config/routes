@@ -4,6 +4,6 @@
 /robots.txt RobotsR GET
 
 / HomeR GET POST
-/recipes RecipesR GET POST
-/recipes/#Text SingleRecipeR GET
-/addrecipe AddRecipeR GET
+/recipes RecipesR GET
+/recipes/#Text SingleRecipeR GET POST
+/addrecipe AddRecipeR GET POST

@@ -1,0 +1,16 @@
+<h1>Recipes
+
+$case formType
+  $of NewRecipe
+    <form method=post action=@{AddRecipeR} enctype=#{formEnctype}>
+      ^{formWidget}
+      <button .btn .btn-primary type="submit">
+          Add
+  $of UpdateRecipe name
+    <form method=post action=@{SingleRecipeR name} enctype=#{formEnctype}>
+      ^{formWidget}
+      <button .btn .btn-primary type="submit">
+          Update
+
+<a .btn .btn-default href=@{RecipesR} role="button">
+  Return to recipes
