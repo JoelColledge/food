@@ -1,16 +1,29 @@
-<h1>Recipes
+<h1>
+  #{title}
 
-$case formType
-  $of NewRecipe
-    <form method=post action=@{AddRecipeR} enctype=#{formEnctype}>
-      ^{formWidget}
-      <button .btn .btn-primary type="submit">
-          Add
-  $of UpdateRecipe name
-    <form method=post action=@{SingleRecipeR name} enctype=#{formEnctype}>
-      ^{formWidget}
-      <button .btn .btn-primary type="submit">
-          Update
+$if not $ null errorMsgs
+  <div .bg-danger>
+    <h2>
+      Errors
 
-<a .btn .btn-default href=@{RecipesR} role="button">
-  Return to recipes
+    <ul .bg-danger>
+      $forall errorMsg <- errorMsgs
+        <li>
+          #{errorMsg}
+
+<p>
+  $case formType
+    $of NewRecipe
+      <form method=post action=@{AddRecipeR} enctype=#{formEnctype}>
+        ^{formWidget}
+        <button .btn .btn-primary type="submit">
+            Add
+    $of UpdateRecipe name
+      <form method=post action=@{SingleRecipeR name} enctype=#{formEnctype}>
+        ^{formWidget}
+        <button .btn .btn-primary type="submit">
+            Update
+
+<p>
+  <a .btn .btn-default href=@{RecipesR} role="button">
+    Return to recipes

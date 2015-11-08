@@ -2,7 +2,7 @@ module Handler.Recipes where
 
 import Import
 import Yesod.Form.Bootstrap3 (BootstrapFormLayout (..), renderBootstrap3,
-                              bfs)
+                              bfs, withLargeInput)
 
 -- import Data.Maybe(fromMaybe)
 
@@ -20,6 +20,11 @@ getName = FDB.getName . FDB.recipe_name
 getCategory :: FDB.Recipe -> Text
 getCategory = FDB.getCategory . FDB.recipe_category
 
+getIsFolder :: FDB.Recipe -> Bool
+getIsFolder recipe = case FDB.recipe_source recipe of
+    FDB.RecipeFolder -> True
+    _ -> False
+
 getMaybeBook :: FDB.Recipe -> Maybe Text
 getMaybeBook recipe = case FDB.recipe_source recipe of
     FDB.RecipeBook book _ -> Just book
@@ -30,11 +35,32 @@ getMaybePage recipe = case FDB.recipe_source recipe of
     FDB.RecipeBook _ maybePage -> maybePage
     _ -> Nothing
 
+getMaybeUrl :: FDB.Recipe -> Maybe Text
+getMaybeUrl recipe = case FDB.recipe_source recipe of
+    FDB.RecipeOnline url -> Just url
+    _ -> Nothing
+
 getMaybeRating :: FDB.Recipe -> Maybe Int
 getMaybeRating = FDB.ratingToMaybe . FDB.recipe_rating
 
 getComments :: FDB.Recipe -> Text
 getComments = FDB.recipe_comments
+
+constructSource :: Bool -> Maybe Text -> Maybe Int -> Maybe Text -> Maybe FDB.RecipeSource
+constructSource isFolder maybeBook maybePage maybeUrl = constructSource' sources
+  where
+    sources = catMaybes [
+        if isFolder then Just FDB.RecipeFolder else Nothing,
+        fmap (flip FDB.RecipeBook maybePage) maybeBook,
+        fmap FDB.RecipeOnline maybeUrl
+      ]
+    constructSource' [] = Just FDB.RecipeUnknown
+    constructSource' [source] = Just source
+    constructSource' _ = Nothing
+
+constructRating :: Maybe Int -> FDB.Rating
+constructRating Nothing = FDB.RatingNone
+constructRating (Just rating) = FDB.Rating rating
 
 --
 -- Filtering and sorting
@@ -125,35 +151,74 @@ getRecipeForm formType title maybeRecipe = do
     (formWidget, formEnctype) <- generateFormPost (recipeForm recipeCategories maybeRecipe)
 
     defaultLayout $ do
+        let errorMsgs = [] :: [Text]
         setTitle (toHtml title)
         $(widgetFile "recipe-editor")
+
+
+type RecipeFormReturn = (Text, Text, Bool, Maybe Text, Maybe Int, Maybe Text, Maybe Int, Maybe Textarea)
+
+maybeLeft :: Either a b -> Maybe a
+maybeLeft (Left a) = Just a
+maybeLeft _ = Nothing
+
+fillLeft :: a -> Maybe b -> Either a b
+fillLeft _ (Just b) = Right b
+fillLeft a Nothing = Left a
+
+processResult :: FDB.Recipe -> FormResult RecipeFormReturn -> Either [Text] FDB.Recipe
+processResult baseRecipe
+      (FormSuccess (name, category,
+        isFolder, maybeBook, maybePage, maybeUrl,
+        maybeRating, maybeComments)) = assembleParts eitherSource
+  where
+    eitherSource = fillLeft "Invalid recipe source specification" $
+      constructSource isFolder maybeBook maybePage maybeUrl
+
+    assembleParts (Right source) = Right $ baseRecipe {
+        FDB.recipe_name = FDB.Name name,
+        FDB.recipe_category = FDB.Category category,
+        FDB.recipe_source = source,
+        FDB.recipe_rating = constructRating maybeRating,
+        FDB.recipe_comments = fromMaybe "" (fmap unTextarea maybeComments)
+      }
+    assembleParts es = Left $ catMaybes [maybeLeft es]
+
+processResult _ _ = Left ["Failed to process form"]
 
 postRecipeForm :: RecipeFormType -> Text -> Maybe Text -> Handler Html
 postRecipeForm formType title priorName = do
     App {..} <- getYesod
+    recipeSet <- liftIO (FDB.getRecipes appDatabase)
     recipeCategories <- liftIO (FDB.getCategories appDatabase)
+
+    let maybeRecipe = priorName >>= \ name -> IxSet.getOne (recipeSet @= FDB.Name name)
+    let baseRecipe = fromMaybe FDB.emptyRecipe maybeRecipe
 
     -- Field defaults don't matter for a failed post
     ((result, formWidget), formEnctype) <- runFormPost (recipeForm recipeCategories Nothing)
 
-    case result of
-      FormSuccess (name, category) -> do
-        let indexName = fromMaybe name priorName
-        let newRecipe = FDB.emptyRecipe { FDB.recipe_name = FDB.Name name, FDB.recipe_category = FDB.Category category }
-        liftIO (FDB.setRecipe appDatabase indexName newRecipe)
+    case processResult baseRecipe result of
+      Right recipe -> do
+        let indexName = fromMaybe (getName recipe) priorName
+        liftIO (FDB.setRecipe appDatabase indexName recipe)
         redirect RecipesR
 
-      _ -> do
-        putStrLn "Recipe post failed"
-        -- TODO: Explain errors
+      Left errorMsgs -> do
         defaultLayout $ do
             setTitle (toHtml title)
             $(widgetFile "recipe-editor")
 
-recipeForm :: [Text] -> Maybe FDB.Recipe -> Form (Text, Text)
-recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,)
+recipeForm :: [Text] -> Maybe FDB.Recipe -> Form RecipeFormReturn
+recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,,,)
     <$> nameField
     <*> categoryField
+    <*> folderField
+    <*> bookNameField
+    <*> bookPageField
+    <*> addressField
+    <*> ratingField
+    <*> commentsField
   where
     nameField = areq
       textField
@@ -165,8 +230,40 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,)
       (bfs ("Category" :: Text)) -- TODO: Add the 'mutiple' parameter with no value, might involve customising Yesod Forms
       (fmap getCategory maybeRecipe)
 
+    folderField = areq
+      checkBoxField
+      (bfs ("Folder" :: Text))
+      (fmap getIsFolder maybeRecipe)
+
+    bookNameField = aopt
+      textField
+      (bfs ("Book" :: Text))
+      (fmap getMaybeBook maybeRecipe)
+
+    bookPageField = aopt
+      intField
+      (bfs ("Page" :: Text))
+      (fmap getMaybePage maybeRecipe)
+
+    addressField = aopt
+      urlField
+      (bfs ("Web address" :: Text))
+      (fmap getMaybeUrl maybeRecipe)
+
+    ratingField = aopt
+      intField
+      (bfs ("Rating" :: Text))
+      (fmap getMaybeRating maybeRecipe)
+
+    -- General properties ??? Perhaps just do comma separated with = for now
+
+    commentsField = aopt
+      textareaField
+      (bfs ("Comments" :: Text))
+      (Just $ fmap (Textarea . getComments) maybeRecipe)
+
     -- TODO: Allow creation of new categories
     -- e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php
+    -- TODO: Suggest book names similarly
 
-    -- TODO: Source, ingredients
-    -- TODO: Give another way of modifying rating, properties, comments, category, ???name
+    -- TODO: Ingredients
