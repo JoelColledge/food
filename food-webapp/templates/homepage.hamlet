@@ -1,5 +1,7 @@
 <h1>Colledge Food
 
+<h2>#{debugText}
+
 <ol>
   <li>
     <a href=@{RecipesR}>Recipes
