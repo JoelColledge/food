@@ -1,0 +1,6 @@
+<div .form-inline hidden>
+  <input id="#{theId}-1" name="#{name}" *{attrs} type="text" value="">
+  <input id="#{theId}-2" name="#{name}" *{attrs} type="number" step=any value="">
+<div .form-inline>
+  <input id="#{theId}-3" name="#{name}" *{attrs} type="text" :isReq:required value="">
+  <input id="#{theId}-4" name="#{name}" *{attrs} type="number" step=any value="">
