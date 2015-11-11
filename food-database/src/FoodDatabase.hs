@@ -12,6 +12,7 @@ module FoodDatabase (
     RecipeSource(..),
     Rating(..),
     Properties(..),
+    Ingredients(..),
     Recipe(..),
 
     emptyRecipe,
@@ -79,6 +80,9 @@ $(deriveSafeCopy 0 'base ''Rating)
 newtype Properties = Properties { getProperties :: Map Text Text } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Properties)
 
+newtype Ingredients = Ingredients { getIngredients :: [(Text, Maybe Double, Text)] } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Ingredients)
+
 data Recipe = Recipe {
     recipe_id :: ID,
     recipe_name :: Name,
@@ -86,7 +90,8 @@ data Recipe = Recipe {
     recipe_source :: RecipeSource,
     recipe_rating :: Rating,
     recipe_properties :: Properties,
-    recipe_comments :: Text
+    recipe_comments :: Text,
+    recipe_ingredients :: Ingredients
   } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Recipe)
 
@@ -170,7 +175,7 @@ getCategories database = do
 --
 emptyRecipe :: Recipe
 emptyRecipe = Recipe (ID 0) (Name "") (Category "")
-    RecipeUnknown RatingNone (Properties Map.empty) ""
+    RecipeUnknown RatingNone (Properties Map.empty) "" (Ingredients [])
 
 maybeToRating :: Maybe Int -> Rating
 maybeToRating (Just a) = Rating a
@@ -191,7 +196,8 @@ recipeToCells recipe =
       T.pack . show . recipe_source,
       T.pack . show . recipe_rating,
       T.pack . show . getProperties . recipe_properties,
-      recipe_comments]
+      recipe_comments,
+      T.pack . show . getIngredients . recipe_ingredients]
 
 columnWidths :: [[Text]] -> [Int]
 columnWidths cols = map (maximum . map (T.length)) (transpose cols)
@@ -285,7 +291,8 @@ readCsvRecipe bookMap categoryMap line = case csvLineFields line of
           recipe_source = readSource bookMap sourceText pageText,
           recipe_rating = maybeToRating $ maybeDecimal ratingText,
           recipe_properties = readProperties prepMinsText totalMinsText,
-          recipe_comments = comments})
+          recipe_comments = comments,
+          recipe_ingredients = Ingredients [("Flour", Just 300, "g")]})
     _ -> Left "Failed to match recipe fields"
 
 readCsvRecipes :: Context -> BookMap -> CategoryMap -> FilePath -> IO ()

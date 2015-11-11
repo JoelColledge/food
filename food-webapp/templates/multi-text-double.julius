@@ -1,5 +1,39 @@
-$(function() {
-    $("h1").click(function(){
-        alert("You clicked on the heading!");
+function deleteIfEmpty(e) {
+    console.log('deleteIfEmpty ' + $(e.target).val());
+
+    if ($(e.target).val() === '') {
+        console.log('deleting');
+        $(e.target).parent().remove();
+    }
+}
+
+function addNewIfNonEmpty(e) {
+    console.log('addNew ' + $(e.target).val());
+
+    if ($(e.target).val() === '') {
+        return;
+    }
+
+    $(e.target).off();
+    $(e.target).on("change paste keyup", function(e2) {
+        deleteIfEmpty(e2);
     });
+
+    var inputContainer = $('#ingredients');
+    var templateRow = $('div.ingredient-row').first();
+    var newRow = templateRow.clone();
+    inputContainer.append(newRow);
+
+    var newInput = newRow.find('input');
+    newInput.val('');
+    newInput.on("change paste keyup", function(e2) {
+        addNewIfNonEmpty(e2);
+    });
+}
+
+var initialRow = $('div.ingredient-row');
+var initialInput = initialRow.find('input');
+
+initialInput.on("change paste keyup", function(e) {
+    addNewIfNonEmpty(e);
 });

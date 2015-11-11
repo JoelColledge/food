@@ -2,9 +2,9 @@ module Handler.Recipes where
 
 import Import
 import Yesod.Form.Bootstrap3 (BootstrapFormLayout (..), renderBootstrap3,
-                              bfs, withLargeInput)
+                              bfs)
 
--- import Data.Maybe(fromMaybe)
+import Handler.MultiField
 
 import qualified FoodDatabase as FDB
 import Data.IxSet( (@=) )
@@ -45,6 +45,9 @@ getMaybeRating = FDB.ratingToMaybe . FDB.recipe_rating
 
 getComments :: FDB.Recipe -> Text
 getComments = FDB.recipe_comments
+
+getIngredients :: FDB.Recipe -> [(Text, Maybe Double, Text)]
+getIngredients = FDB.getIngredients . FDB.recipe_ingredients
 
 constructSource :: Bool -> Maybe Text -> Maybe Int -> Maybe Text -> Maybe FDB.RecipeSource
 constructSource isFolder maybeBook maybePage maybeUrl = constructSource' sources
@@ -156,7 +159,7 @@ getRecipeForm formType title maybeRecipe = do
         $(widgetFile "recipe-editor")
 
 
-type RecipeFormReturn = (Text, Text, Bool, Maybe Text, Maybe Int, Maybe Text, Maybe Int, Maybe Textarea)
+type RecipeFormReturn = (Text, Text, Bool, Maybe Text, Maybe Int, Maybe Text, Maybe Int, Maybe Textarea, [(Text, Maybe Double, Text)])
 
 maybeLeft :: Either a b -> Maybe a
 maybeLeft (Left a) = Just a
@@ -170,7 +173,7 @@ processResult :: FDB.Recipe -> FormResult RecipeFormReturn -> Either [Text] FDB.
 processResult baseRecipe
       (FormSuccess (name, category,
         isFolder, maybeBook, maybePage, maybeUrl,
-        maybeRating, maybeComments)) = assembleParts eitherSource
+        maybeRating, maybeComments, ingredients)) = assembleParts eitherSource
   where
     eitherSource = fillLeft "Invalid recipe source specification" $
       constructSource isFolder maybeBook maybePage maybeUrl
@@ -180,7 +183,8 @@ processResult baseRecipe
         FDB.recipe_category = FDB.Category category,
         FDB.recipe_source = source,
         FDB.recipe_rating = constructRating maybeRating,
-        FDB.recipe_comments = fromMaybe "" (fmap unTextarea maybeComments)
+        FDB.recipe_comments = fromMaybe "" (fmap unTextarea maybeComments),
+        FDB.recipe_ingredients = FDB.Ingredients ingredients
       }
     assembleParts es = Left $ catMaybes [maybeLeft es]
 
@@ -210,7 +214,7 @@ postRecipeForm formType title priorName = do
             $(widgetFile "recipe-editor")
 
 recipeForm :: [Text] -> Maybe FDB.Recipe -> Form RecipeFormReturn
-recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,,,)
+recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,,,,)
     <$> nameField
     <*> categoryField
     <*> folderField
@@ -219,6 +223,7 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
     <*> addressField
     <*> ratingField
     <*> commentsField
+    <*> ingredientsField
   where
     nameField = areq
       textField
@@ -261,6 +266,11 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
       textareaField
       (bfs ("Comments" :: Text))
       (Just $ fmap (Textarea . getComments) maybeRecipe)
+
+    ingredientsField = areq
+      multiTDTField
+      (bfs ("Ingredients" :: Text))
+      (fmap getIngredients maybeRecipe)
 
     -- TODO: Allow creation of new categories
     -- e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php

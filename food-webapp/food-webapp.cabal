@@ -21,6 +21,7 @@ library
                      Settings.StaticFiles
                      Handler.Common
                      Handler.Home
+                     Handler.MultiField
                      Handler.Recipes
 
     if flag(dev) || flag(library-only)
