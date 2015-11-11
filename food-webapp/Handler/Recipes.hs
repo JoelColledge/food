@@ -84,20 +84,24 @@ getRecipesR = do
 
     ((result, formWidget), formEnctype) <- runFormGet (filterForm recipeCategories)
 
-    let sortField = case result of
-            FormSuccess (s,_) -> s
-            _ -> Name
-
-    let categoryFilter = case result of
-            FormSuccess (_, Just c) -> (@= FDB.Category c)
+    let searchFilter = case result of
+            FormSuccess (Just t,_,_) -> (@= FDB.PartialText (toLower t))
             _ -> id
+
+    let sortField = case result of
+            FormSuccess (_,s,_) -> s
+            _ -> Name
 
     let sorter = case sortField of
             Name -> IxSet.toAscList (IxSet.Proxy :: IxSet.Proxy FDB.Name)
             Category -> IxSet.toAscList (IxSet.Proxy :: IxSet.Proxy FDB.Category)
             Rating -> IxSet.toDescList (IxSet.Proxy :: IxSet.Proxy FDB.Rating)
 
-    let recipes = sorter $ categoryFilter recipeSet
+    let categoryFilter = case result of
+            FormSuccess (_,_,Just c) -> (@= FDB.Category c)
+            _ -> id
+
+    let recipes = sorter $ searchFilter $ categoryFilter recipeSet
 
     defaultLayout $ do
         setTitle "Recipes"
@@ -106,11 +110,17 @@ getRecipesR = do
 dupe :: a -> (a, a)
 dupe x = (x, x)
 
-filterForm :: [Text] -> Form (SortField, Maybe Text)
-filterForm categories = renderBootstrap3 BootstrapBasicForm $ (,)
-    <$> sortField
+filterForm :: [Text] -> Form (Maybe Text, SortField, Maybe Text)
+filterForm categories = renderBootstrap3 BootstrapBasicForm $ (,,)
+    <$> generalSearchField
+    <*> sortField
     <*> categoryFilterField
   where
+    generalSearchField = aopt
+      (searchField True)
+      (bfs ("Search: " :: Text))
+      Nothing
+
     sortField = areq
       (selectField optionsEnum)
       (bfs ("Sort by: " :: Text))

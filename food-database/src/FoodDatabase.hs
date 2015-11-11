@@ -15,6 +15,8 @@ module FoodDatabase (
     Ingredients(..),
     Recipe(..),
 
+    PartialText(..),
+
     emptyRecipe,
     maybeToRating,
     ratingToMaybe,
@@ -37,7 +39,7 @@ import Control.Monad.Reader(ask)
 -- import Control.Applicative( (<$>) )
 -- import System.Environment(getArgs)
 import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert, updateIx, toList)
-import Data.List(nub, transpose)
+import Data.List(nub, transpose,)
 import Data.Maybe(catMaybes)
 -- import Data.Ratio( (%) , Rational)
 import Data.SafeCopy
@@ -49,7 +51,7 @@ import qualified Data.Map.Strict as Map
 import Data.Text(Text)
 import qualified Data.Text as T(
   cons, uncons, break, drop, dropWhile, dropWhileEnd, pack, unpack, length,
-  append, replicate, intercalate, unlines, null)
+  append, replicate, intercalate, unlines, null, words, inits, toLower)
 import qualified Data.Text.Read as T(decimal)
 import qualified Data.Text.IO as T(putStrLn)
 import qualified Data.Text.Lazy as TL(toStrict, lines)
@@ -95,13 +97,22 @@ data Recipe = Recipe {
   } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Recipe)
 
+newtype PartialText = PartialText { getPartialText :: Text } deriving (Eq, Ord, Show, Typeable)
+
+textPartials :: Text -> [PartialText]
+textPartials t = map (PartialText . T.toLower) $ concatMap T.inits $ T.words t
+
+recipePartialTexts :: Recipe -> [PartialText]
+recipePartialTexts recipe = nub $ concatMap textPartials [getName $ recipe_name recipe]
+
 instance Indexable Recipe where
   empty = ixSet [
       ixFun ((:[]) . recipe_id),
       ixFun ((:[]) . recipe_name),
       ixFun ((:[]) . recipe_category),
       ixFun ((:[]) . recipe_source),
-      ixFun ((:[]) . recipe_rating)
+      ixFun ((:[]) . recipe_rating),
+      ixFun recipePartialTexts
     ]
 
 type BookMap = Map Text Text

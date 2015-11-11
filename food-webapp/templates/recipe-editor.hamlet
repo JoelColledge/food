@@ -22,7 +22,3 @@ $if not $ null errorMsgs
         ^{formWidget}
         <button .btn .btn-primary type="submit">
             Update
-
-<p>
-  <a .btn .btn-default href=@{RecipesR} role="button">
-    Return to recipes

@@ -6,15 +6,20 @@
     <button .btn .btn-primary type="submit">
         Update
 
-<table .table .table-striped>
-  <tbody>
-    $forall recipe <- recipes
-      <tr>
-        <td>
-          <a href=@{SingleRecipeR (getName recipe)}>
-            #{getName recipe}
-        <td>
-          #{getCategory recipe}
-        <td>
-          $maybe rating <- getMaybeRating recipe
-            #{rating}
+$if null recipes
+  <p>
+    <strong>
+      No matching recipes
+$else
+  <table .table .table-striped>
+    <tbody>
+      $forall recipe <- recipes
+        <tr>
+          <td>
+            <a href=@{SingleRecipeR (getName recipe)}>
+              #{getName recipe}
+          <td>
+            #{getCategory recipe}
+          <td>
+            $maybe rating <- getMaybeRating recipe
+              #{rating}
