@@ -1,5 +1,4 @@
-<h1>
-  #{title}
+<h1>#{title}
 
 $if not $ null errorMsgs
   <div .bg-danger>

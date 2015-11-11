@@ -277,5 +277,3 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
     -- TODO: Allow creation of new categories
     -- e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php
     -- TODO: Suggest book names similarly
-
-    -- TODO: Ingredients

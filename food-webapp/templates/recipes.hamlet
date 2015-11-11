@@ -6,18 +6,15 @@
     <button .btn .btn-primary type="submit">
         Update
 
-<p>
-  <a .btn .btn-default href=@{AddRecipeR} role="button">
-    Add Recipe
-
 <table .table .table-striped>
   <tbody>
     $forall recipe <- recipes
       <tr>
-        <td> #{getName recipe}
-        <td> #{getCategory recipe}
+        <td>
+          <a href=@{SingleRecipeR (getName recipe)}>
+            #{getName recipe}
+        <td>
+          #{getCategory recipe}
         <td>
           $maybe rating <- getMaybeRating recipe
             #{rating}
-        <td>
-          <a href=@{SingleRecipeR (getName recipe)}>Go
