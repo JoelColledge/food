@@ -8,32 +8,48 @@ function deleteIfEmpty(e) {
 }
 
 function addNewIfNonEmpty(e) {
-    console.log('addNew ' + $(e.target).val());
+    console.log('addNewIfNonEmpty ' + $(e.target).val());
 
-    if ($(e.target).val() === '') {
+    var targetInput = $(e.target);
+
+    if (targetInput.val() === '') {
         return;
     }
 
-    $(e.target).off();
-    $(e.target).on("change paste keyup", function(e2) {
+    targetInput.parent().children().attr('name', '#{rawJS name}');
+
+    targetInput.off();
+    targetInput.on('change paste keyup', function(e2) {
         deleteIfEmpty(e2);
     });
 
-    var inputContainer = $('#ingredients');
-    var templateRow = $('div.ingredient-row').first();
-    var newRow = templateRow.clone();
-    inputContainer.append(newRow);
-
-    var newInput = newRow.find('input');
-    newInput.val('');
-    newInput.on("change paste keyup", function(e2) {
-        addNewIfNonEmpty(e2);
-    });
+    addBlank();
 }
 
-var initialRow = $('div.ingredient-row');
-var initialInput = initialRow.find('input');
+function addBlank() {
+  console.log('addBlank');
 
-initialInput.on("change paste keyup", function(e) {
-    addNewIfNonEmpty(e);
+  var ingredientContainer = $('##{rawJS theId}');
+  console.log(ingredientContainer);
+  var templateRow = ingredientContainer.find('.ingredient-template');
+  console.log(templateRow);
+
+  var newRow = templateRow.clone();
+  newRow.removeAttr('hidden');
+  newRow.removeClass('ingredient-template');
+  templateRow.parent().append(newRow);
+
+  var firstInput = newRow.find('input').first();
+
+  firstInput.on('change paste keyup', function(e) {
+      addNewIfNonEmpty(e);
+  });
+}
+
+addBlank();
+
+var ingredientContainer = $('##{rawJS theId}');
+var initialInputs = ingredientContainer.find('.ingredient-initial');
+initialInputs.on('change paste keyup', function(e2) {
+    deleteIfEmpty(e2);
 });

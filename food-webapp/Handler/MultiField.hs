@@ -3,6 +3,7 @@ module Handler.MultiField(
   ) where
 
 import Import
+import Text.Julius (rawJS)
 
 import qualified Data.Text.Read
 import Data.Text as T ( Text, append, concat, cons, head
@@ -16,8 +17,8 @@ multiParseHelper :: (Monad m, RenderMessage site FormMessage)
 multiParseHelper _ [] _ = return $ Right Nothing
 multiParseHelper f xs _ = return $ either (Left . SomeMessage) (Right . Just) $ f xs
 
-parseValsWithoutTemplate :: [Text] -> Either FormMessage [(Text, Maybe Double, Text)]
-parseValsWithoutTemplate = parseVals . drop 3
+-- parseValsWithoutTemplate :: [Text] -> Either FormMessage [(Text, Maybe Double, Text)]
+-- parseValsWithoutTemplate = parseVals . drop 3
 
 parseVals :: [Text] -> Either FormMessage [(Text, Maybe Double, Text)]
 parseVals [] = Right []
@@ -54,7 +55,7 @@ parseDouble s =
 
 multiTDTField :: Monad m => RenderMessage (HandlerSite m) FormMessage => Field m [(Text, Maybe Double, Text)]
 multiTDTField = Field
-    { fieldParse = multiParseHelper $ parseValsWithoutTemplate
+    { fieldParse = multiParseHelper $ parseVals
     , fieldView = \theId name attrs val isReq -> do
         addScriptRemote "https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"
         $(widgetFile "multi-text-double") -- TODO rename

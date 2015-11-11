@@ -1,9 +1,10 @@
-<div .form-inline hidden>
-  <input id="#{theId}-1" name="#{name}" *{attrs} type="text" value="">
-  <input id="#{theId}-2" name="#{name}" *{attrs} type="number" step=any value="">
-  <input id="#{theId}-3" name="#{name}" *{attrs} type="text" value="">
-$forall (ingredient, maybeQuantity, unit) <- preFill val
-  <div .form-inline>
-    <input name="#{name}" *{attrs} type="text" value="#{ingredient}">
-    <input name="#{name}" *{attrs} type="number" step=any value="#{showQuantity maybeQuantity}">
-    <input name="#{name}" *{attrs} type="text" value="#{unit}">
+<div id="#{theId}">
+  <div .ingredient-template .form-inline hidden>
+    <input *{attrs} type="text" value="">
+    <input *{attrs} type="number" step=any value="">
+    <input *{attrs} type="text" value="">
+  $forall (ingredient, maybeQuantity, unit) <- preFill val
+    <div .form-inline>
+      <input .form-control .ingredient-initial name="#{name}" *{attrs} type="text" value="#{ingredient}">
+      <input name="#{name}" *{attrs} type="number" step=any value="#{showQuantity maybeQuantity}">
+      <input name="#{name}" *{attrs} type="text" value="#{unit}">
