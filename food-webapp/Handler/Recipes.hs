@@ -159,7 +159,9 @@ getRecipeForm formType title maybeRecipe = do
         $(widgetFile "recipe-editor")
 
 
-type RecipeFormReturn = (Text, Text, Bool, Maybe Text, Maybe Int, Maybe Text, Maybe Int, Maybe Textarea, [(Text, Maybe Double, Text)])
+type RecipeFormReturn = (Text, Text,
+  Bool, Maybe Text, Maybe Int, Maybe Text,
+  Maybe Int, Maybe Textarea, Maybe [(Text, Maybe Double, Text)])
 
 maybeLeft :: Either a b -> Maybe a
 maybeLeft (Left a) = Just a
@@ -184,7 +186,7 @@ processResult baseRecipe
         FDB.recipe_source = source,
         FDB.recipe_rating = constructRating maybeRating,
         FDB.recipe_comments = fromMaybe "" (fmap unTextarea maybeComments),
-        FDB.recipe_ingredients = FDB.Ingredients ingredients
+        FDB.recipe_ingredients = FDB.Ingredients (fromMaybe [] ingredients)
       }
     assembleParts es = Left $ catMaybes [maybeLeft es]
 
@@ -267,10 +269,10 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
       (bfs ("Comments" :: Text))
       (Just $ fmap (Textarea . getComments) maybeRecipe)
 
-    ingredientsField = areq
+    ingredientsField = aopt
       multiTDTField
       (bfs ("Ingredients" :: Text))
-      (fmap getIngredients maybeRecipe)
+      (Just $ fmap getIngredients maybeRecipe)
 
     -- TODO: Allow creation of new categories
     -- e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php
