@@ -17,11 +17,31 @@ Goals
 ~~~~~
 
 Input data from a receipt with minimal effort
-Filter by category
-Sort by rating and perhaps other fields
+y Filter by category
+y Sort by rating and perhaps other fields
 Show/sort by entry time/seq
 
 Approach
 ~~~~~~~~
 
 Allow scaling ingredients by an arbitrary factor as well as relative to serves or size
+
+TODO
+----
+
+Split Recipes.hs into Recipes and RecipeEditor
+
+Rename multi-text-double because it now has an extra text field
+
+Drop-down for source selection (including null), only show required fields
+Replace ID with type that allows dates too
+Allow sorting by this generic sequence
+Show the sequence val somewhere
+
+Allow creation of new categories
+  e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php
+Suggest book names similarly
+
+Show and allow editing of general properties
+
+Prices

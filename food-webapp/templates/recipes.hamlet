@@ -23,3 +23,6 @@ $else
           <td>
             $maybe rating <- getMaybeRating recipe
               #{rating}
+          <td>
+            $forall ingredientName <- getIngredientNames recipe
+              #{ingredientName} #

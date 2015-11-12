@@ -33,15 +33,12 @@ import Prelude
 import Data.Acid
 
 import Control.Arrow(second)
--- import Control.Monad(when)
 import Control.Monad.State(get, put)
 import Control.Monad.Reader(ask)
--- import Control.Applicative( (<$>) )
--- import System.Environment(getArgs)
+import Data.Char(isPrint, isPunctuation)
 import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert, updateIx, toList)
 import Data.List(nub, transpose,)
 import Data.Maybe(catMaybes)
--- import Data.Ratio( (%) , Rational)
 import Data.SafeCopy
 import Data.Typeable(Typeable)
 
@@ -51,7 +48,7 @@ import qualified Data.Map.Strict as Map
 import Data.Text(Text)
 import qualified Data.Text as T(
   cons, uncons, break, drop, dropWhile, dropWhileEnd, pack, unpack, length,
-  append, replicate, intercalate, unlines, null, words, inits, toLower)
+  append, replicate, intercalate, unlines, null, words, inits, toLower, map)
 import qualified Data.Text.Read as T(decimal)
 import qualified Data.Text.IO as T(putStrLn)
 import qualified Data.Text.Lazy as TL(toStrict, lines)
@@ -100,10 +97,16 @@ $(deriveSafeCopy 0 'base ''Recipe)
 newtype PartialText = PartialText { getPartialText :: Text } deriving (Eq, Ord, Show, Typeable)
 
 textPartials :: Text -> [PartialText]
-textPartials t = map (PartialText . T.toLower) $ concatMap T.inits $ T.words t
+textPartials t = map (PartialText . T.toLower) $ concatMap T.inits $ T.words $
+    T.map (\ c -> if isPrint c && not (isPunctuation c) then c else ' ') t
+
+fst3 :: (a,b,c) -> a
+fst3 (a,_,_) = a
 
 recipePartialTexts :: Recipe -> [PartialText]
-recipePartialTexts recipe = nub $ concatMap textPartials [getName $ recipe_name recipe]
+recipePartialTexts recipe = nub $ concatMap textPartials $
+    getName (recipe_name recipe) :
+      map fst3 (getIngredients $ recipe_ingredients recipe)
 
 instance Indexable Recipe where
   empty = ixSet [

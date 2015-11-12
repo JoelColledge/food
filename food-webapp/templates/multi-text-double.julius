@@ -16,7 +16,7 @@ function addNewIfNonEmpty(e) {
         return;
     }
 
-    targetInput.parent().children().attr('name', '#{rawJS name}');
+    targetInput.parent().children('input').attr('name', '#{rawJS name}');
 
     targetInput.off();
     targetInput.on('change paste keyup', function(e2) {
@@ -53,3 +53,9 @@ var initialInputs = ingredientContainer.find('.ingredient-initial');
 initialInputs.on('change paste keyup', function(e2) {
     deleteIfEmpty(e2);
 });
+
+
+// ###
+// $('#hident4').parent().removeClass('form-group');
+// $('#hident4').removeClass('form-control');
+// $('#hident4').parent().addClass('checkbox');

@@ -49,6 +49,9 @@ getComments = FDB.recipe_comments
 getIngredients :: FDB.Recipe -> [(Text, Maybe Double, Text)]
 getIngredients = FDB.getIngredients . FDB.recipe_ingredients
 
+getIngredientNames :: FDB.Recipe -> [Text]
+getIngredientNames = map (\ (a,_,_) -> a) . getIngredients
+
 constructSource :: Bool -> Maybe Text -> Maybe Int -> Maybe Text -> Maybe FDB.RecipeSource
 constructSource isFolder maybeBook maybePage maybeUrl = constructSource' sources
   where
@@ -128,7 +131,7 @@ filterForm categories = renderBootstrap3 BootstrapBasicForm $ (,,)
 
     categoryFilterField = aopt
       (selectFieldList (map dupe categories))
-      (bfs ("Category filter: " :: Text)) -- TODO: Add the 'mutiple' parameter with no value, might involve customising Yesod Forms
+      (bfs ("Category filter: " :: Text))
       Nothing
 
 data RecipeFormType = NewRecipe
@@ -244,12 +247,13 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
 
     categoryField = areq
       (selectFieldList (map dupe categories))
-      (bfs ("Category" :: Text)) -- TODO: Add the 'mutiple' parameter with no value, might involve customising Yesod Forms
+      (bfs ("Category" :: Text))
       (fmap getCategory maybeRecipe)
 
     folderField = areq
       checkBoxField
-      (bfs ("Folder" :: Text))
+      "Folder"
+--       (bfs ("Folder" :: Text))
       (fmap getIsFolder maybeRecipe)
 
     bookNameField = aopt
@@ -272,8 +276,6 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
       (bfs ("Rating" :: Text))
       (fmap getMaybeRating maybeRecipe)
 
-    -- General properties ??? Perhaps just do comma separated with = for now
-
     commentsField = aopt
       textareaField
       (bfs ("Comments" :: Text))
@@ -283,7 +285,3 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
       multiTDTField
       (bfs ("Ingredients" :: Text))
       (Just $ fmap getIngredients maybeRecipe)
-
-    -- TODO: Allow creation of new categories
-    -- e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php
-    -- TODO: Suggest book names similarly
