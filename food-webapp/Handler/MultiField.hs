@@ -57,7 +57,6 @@ multiTDTField :: Monad m => RenderMessage (HandlerSite m) FormMessage => Field m
 multiTDTField = Field
     { fieldParse = multiParseHelper $ parseVals
     , fieldView = \theId name attrs val isReq -> do
-        addScriptRemote "https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"
         $(widgetFile "multi-text-double") -- TODO rename
     , fieldEnctype = UrlEncoded
     }

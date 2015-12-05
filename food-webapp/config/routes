@@ -7,3 +7,4 @@
 /recipes RecipesR GET
 /recipes/#Text SingleRecipeR GET POST
 /addrecipe AddRecipeR GET POST
+/categories CategoriesR GET

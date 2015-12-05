@@ -27,23 +27,23 @@ function addNewIfNonEmpty(e) {
 }
 
 function addBlank() {
-  console.log('addBlank');
+    console.log('addBlank');
 
-  var ingredientContainer = $('##{rawJS theId}');
-  console.log(ingredientContainer);
-  var templateRow = ingredientContainer.find('.ingredient-template');
-  console.log(templateRow);
+    var ingredientContainer = $('##{rawJS theId}');
+    console.log(ingredientContainer);
+    var templateRow = ingredientContainer.find('.ingredient-template');
+    console.log(templateRow);
 
-  var newRow = templateRow.clone();
-  newRow.removeAttr('hidden');
-  newRow.removeClass('ingredient-template');
-  templateRow.parent().append(newRow);
+    var newRow = templateRow.clone();
+    newRow.removeAttr('hidden');
+    newRow.removeClass('ingredient-template');
+    templateRow.parent().append(newRow);
 
-  var firstInput = newRow.find('input').first();
+    var firstInput = newRow.find('input').first();
 
-  firstInput.on('change paste keyup', function(e) {
-      addNewIfNonEmpty(e);
-  });
+    firstInput.on('change paste keyup', function(e) {
+        addNewIfNonEmpty(e);
+    });
 }
 
 addBlank();
@@ -54,8 +54,71 @@ initialInputs.on('change paste keyup', function(e2) {
     deleteIfEmpty(e2);
 });
 
+// $(document).ready(function(){
+//     $('input').typeahead({
+//           name: 'f4',
+//           local: ['Audi', 'BMW', 'Bugatti', 'Ferrari', 'Ford', 'Lamborghini', 'Mercedes Benz', 'Porsche', 'Rolls-Royce', 'Volkswagen']
+//         });
+// });
 
 // ###
 // $('#hident4').parent().removeClass('form-group');
 // $('#hident4').removeClass('form-control');
 // $('#hident4').parent().addClass('checkbox');
+
+// var substringMatcher = function(strs) {
+//   return function findMatches(q, cb) {
+//     var matches, substringRegex;
+//
+//     // an array that will be populated with substring matches
+//     matches = [];
+//
+//     // regex used to determine if a string contains the substring `q`
+//     substrRegex = new RegExp(q, 'i');
+//
+//     // iterate through the pool of strings and for any string that
+//     // contains the substring `q`, add it to the `matches` array
+//     $.each(strs, function(i, str) {
+//       if (substrRegex.test(str)) {
+//         matches.push(str);
+//       }
+//     });
+//
+//     cb(matches);
+//   };
+// };
+//
+// var states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
+//   'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii',
+//   'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana',
+//   'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+//   'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire',
+//   'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota',
+//   'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island',
+//   'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
+//   'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+// ];
+//
+// $('.category-typeahead').typeahead(
+//     {
+//       hint: true,
+//       highlight: true,
+//       minLength: 1
+//     },
+//     {
+//       name: 'states',
+//       source: substringMatcher(states)
+//     }
+// );
+
+var categories = new Bloodhound({
+  datumTokenizer: Bloodhound.tokenizers.whitespace,
+  queryTokenizer: Bloodhound.tokenizers.whitespace,
+  // ### proper type safe URL
+  prefetch: 'http://localhost:3000/categories'
+});
+
+$('.category-typeahead').typeahead(null, {
+  name: 'categories', // correct this
+  source: categories
+});

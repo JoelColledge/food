@@ -11,6 +11,8 @@ import Data.IxSet( (@=) )
 import qualified Data.IxSet as IxSet(toAscList, toDescList, toList, getOne, Proxy(..))
 -- import qualified Data.Map.Strict as Map(findWithDefault, lookup)
 
+import qualified Data.Text as T
+
 --
 -- Reprocessing database content
 --
@@ -134,6 +136,13 @@ filterForm categories = renderBootstrap3 BootstrapBasicForm $ (,,)
       (bfs ("Category filter: " :: Text))
       Nothing
 
+getCategoriesR :: Handler Value
+getCategoriesR = do
+    App {..} <- getYesod
+    recipeCategories <- liftIO (FDB.getCategories appDatabase)
+
+    return $ toJSON recipeCategories
+
 data RecipeFormType = NewRecipe
                     | UpdateRecipe Text
   deriving (Eq, Show, Read)
@@ -228,6 +237,18 @@ postRecipeForm formType title priorName = do
             setTitle (toHtml title)
             $(widgetFile "recipe-editor")
 
+autocompleteOff :: FieldSettings site -> FieldSettings site
+autocompleteOff fs = fs { fsAttrs = ("autocomplete", "off") : fsAttrs fs }
+
+withClass :: Text -> FieldSettings site -> FieldSettings site
+withClass klass fs = fs { fsAttrs = newAttrs }
+    where newAttrs = addClass klass (fsAttrs fs)
+
+addClass :: Text -> [(Text, Text)] -> [(Text, Text)]
+addClass klass []                    = [("class", klass)]
+addClass klass (("class", old):rest) = ("class", T.concat [old, " ", klass]) : rest
+addClass klass (other         :rest) = other : addClass klass rest
+
 recipeForm :: [Text] -> Maybe FDB.Recipe -> Form RecipeFormReturn
 recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,,,,)
     <$> nameField
@@ -246,8 +267,8 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
       (fmap getName maybeRecipe)
 
     categoryField = areq
-      (selectFieldList (map dupe categories))
-      (bfs ("Category" :: Text))
+      textField
+      (autocompleteOff $ withClass "category-typeahead" $ bfs ("Category" :: Text))
       (fmap getCategory maybeRecipe)
 
     folderField = areq
