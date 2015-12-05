@@ -29,4 +29,5 @@ library
                , mtl
                , ixset
                , text
+               , time
                , containers

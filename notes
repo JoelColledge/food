@@ -29,7 +29,7 @@ Allow scaling ingredients by an arbitrary factor as well as relative to serves o
 TODO
 ----
 
-Replace ID with type that allows dates too
+= Replace ID with type that allows dates too
 
 = Allow creation of new categories
 =   e.g. http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-typeahead.php

@@ -6,7 +6,7 @@ module FoodDatabase (
     getRecipes,
     setRecipe,
     getCategories,
-    ID(..),
+    Seq(..),
     Name(..),
     Category(..),
     RecipeSource(..),
@@ -40,6 +40,7 @@ import Data.IxSet(Indexable(empty), IxSet, ixSet, ixFun, insert, updateIx, toLis
 import Data.List(nub, transpose,)
 import Data.Maybe(catMaybes)
 import Data.SafeCopy
+import Data.Time.Clock(UTCTime)
 import Data.Typeable(Typeable)
 
 import Data.Map.Strict(Map)
@@ -54,10 +55,10 @@ import qualified Data.Text.IO as T(putStrLn)
 import qualified Data.Text.Lazy as TL(toStrict, lines)
 import qualified Data.Text.Lazy.IO as TL(readFile)
 
--- TODO: List (Ingredient, Maybe Quantity)
-
-newtype ID = ID { getID :: Int } deriving (Eq, Ord, Show, Typeable)
-$(deriveSafeCopy 0 'base ''ID)
+data Seq = SeqInt Int
+         | SeqTime UTCTime
+  deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Seq)
 
 newtype Name = Name { getName :: Text } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Name)
@@ -83,7 +84,7 @@ newtype Ingredients = Ingredients { getIngredients :: [(Text, Maybe Double, Text
 $(deriveSafeCopy 0 'base ''Ingredients)
 
 data Recipe = Recipe {
-    recipe_id :: ID,
+    recipe_seq :: Seq,
     recipe_name :: Name,
     recipe_category :: Category,
     recipe_source :: RecipeSource,
@@ -110,7 +111,7 @@ recipePartialTexts recipe = nub $ concatMap textPartials $
 
 instance Indexable Recipe where
   empty = ixSet [
-      ixFun ((:[]) . recipe_id),
+      ixFun ((:[]) . recipe_seq),
       ixFun ((:[]) . recipe_name),
       ixFun ((:[]) . recipe_category),
       ixFun ((:[]) . recipe_source),
@@ -156,7 +157,7 @@ $(makeAcidic ''FoodDatabase [
 
 open :: IO Context
 open = do
-    database <- openLocalStateFrom "myDatabase/" (FoodDatabase empty)
+    database <- openLocalStateFrom "food-db/" (FoodDatabase empty)
     return database
 
 close :: Context -> IO ()
@@ -188,7 +189,7 @@ getCategories database = do
 -- Helper functions
 --
 emptyRecipe :: Recipe
-emptyRecipe = Recipe (ID 0) (Name "") (Category "")
+emptyRecipe = Recipe (SeqInt 0) (Name "") (Category "")
     RecipeUnknown RatingNone (Properties Map.empty) "" (Ingredients [])
 
 maybeToRating :: Maybe Int -> Rating
@@ -204,7 +205,7 @@ ratingToMaybe RatingNone = Nothing
 --
 recipeToCells :: Recipe -> [Text]
 recipeToCells recipe =
-    map (\ f -> f recipe) [T.pack . show . getID . recipe_id,
+    map (\ f -> f recipe) [T.pack . show . recipe_seq,
       getName . recipe_name,
       getCategory . recipe_category,
       T.pack . show . recipe_source,
@@ -299,14 +300,14 @@ readCsvRecipe bookMap categoryMap line = case csvLineFields line of
       comments] -> do
         (idVal,_) <- T.decimal idText
         return (Recipe {
-          recipe_id = ID idVal,
+          recipe_seq = SeqInt idVal,
           recipe_name = Name name,
           recipe_category = Category (Map.findWithDefault category category categoryMap),
           recipe_source = readSource bookMap sourceText pageText,
           recipe_rating = maybeToRating $ maybeDecimal ratingText,
           recipe_properties = readProperties prepMinsText totalMinsText,
           recipe_comments = comments,
-          recipe_ingredients = Ingredients [("Flour", Just 300, "g")]})
+          recipe_ingredients = Ingredients []})
     _ -> Left "Failed to match recipe fields"
 
 readCsvRecipes :: Context -> BookMap -> CategoryMap -> FilePath -> IO ()

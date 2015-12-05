@@ -7,6 +7,7 @@ import Yesod.Form.Bootstrap3 (BootstrapFormLayout (..), renderBootstrap3,
 import Handler.MultiField
 
 import qualified FoodDatabase as FDB
+import Data.Time.Clock(getCurrentTime)
 import Data.IxSet( (@=) )
 import qualified Data.IxSet as IxSet(toAscList, toDescList, toList, getOne, Proxy(..))
 -- import qualified Data.Map.Strict as Map(findWithDefault, lookup)
@@ -220,8 +221,10 @@ postRecipeForm formType title priorName = do
     recipeSet <- liftIO (FDB.getRecipes appDatabase)
     recipeCategories <- liftIO (FDB.getCategories appDatabase)
 
+    now <- liftIO getCurrentTime
+
     let maybeRecipe = priorName >>= \ name -> IxSet.getOne (recipeSet @= FDB.Name name)
-    let baseRecipe = fromMaybe FDB.emptyRecipe maybeRecipe
+    let baseRecipe = fromMaybe (FDB.emptyRecipe { FDB.recipe_seq = FDB.SeqTime now }) maybeRecipe
 
     -- Field defaults don't matter for a failed post
     ((result, formWidget), formEnctype) <- runFormPost (recipeForm recipeCategories Nothing)
@@ -279,7 +282,7 @@ recipeForm categories maybeRecipe = renderBootstrap3 BootstrapBasicForm $ (,,,,,
 
     bookNameField = aopt
       textField
-      (bfs ("Book" :: Text))
+      (autocompleteOff $ withClass "bookname-typeahead" $ bfs ("Book" :: Text))
       (fmap getMaybeBook maybeRecipe)
 
     bookPageField = aopt
