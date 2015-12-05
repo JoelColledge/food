@@ -3,8 +3,11 @@
 /favicon.ico FaviconR GET
 /robots.txt RobotsR GET
 
+/jsRoutes JSRoutesR GET
+
 / HomeR GET POST
 /recipes RecipesR GET
 /recipes/#Text SingleRecipeR GET POST
 /addrecipe AddRecipeR GET POST
 /categories CategoriesR GET
+/booknames BookNamesR GET

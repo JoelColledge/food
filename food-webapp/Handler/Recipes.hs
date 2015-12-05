@@ -144,6 +144,13 @@ getCategoriesR = do
 
     return $ toJSON recipeCategories
 
+getBookNamesR :: Handler Value
+getBookNamesR = do
+    App {..} <- getYesod
+    recipeSet <- liftIO (FDB.getRecipes appDatabase)
+
+    return $ toJSON (mapMaybe getMaybeBook $ IxSet.toList recipeSet)
+
 data RecipeFormType = NewRecipe
                     | UpdateRecipe Text
   deriving (Eq, Show, Read)

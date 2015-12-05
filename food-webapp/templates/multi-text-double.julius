@@ -59,11 +59,21 @@ initialInputs.on('change paste keyup', function(e2) {
 var categories = new Bloodhound({
   datumTokenizer: Bloodhound.tokenizers.whitespace,
   queryTokenizer: Bloodhound.tokenizers.whitespace,
-  // ### proper type safe URL
-  prefetch: 'http://localhost:3000/categories'
+  prefetch: jsRoutes.CategoriesR.get().url
 });
 
 $('.category-typeahead').typeahead(null, {
-  name: 'categories', // correct this
+  name: 'categories',
   source: categories
+});
+
+var booknames = new Bloodhound({
+  datumTokenizer: Bloodhound.tokenizers.whitespace,
+  queryTokenizer: Bloodhound.tokenizers.whitespace,
+  prefetch: jsRoutes.BookNamesR.get().url
+});
+
+$('.bookname-typeahead').typeahead(null, {
+  name: 'booknames',
+  source: booknames
 });

@@ -7,6 +7,7 @@ import Text.Jasmine                (minifym)
 import Yesod.Core.Types            (Logger)
 import Yesod.Default.Util          (addStaticContentExternal)
 import qualified Yesod.Core.Unsafe as Unsafe
+import Yesod.Routes.JavaScript
 
 -- | The foundation datatype for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -35,6 +36,9 @@ instance HasHttpManager App where
 -- type Handler = HandlerT App IO
 -- type Widget = WidgetT App IO ()
 mkYesodData "App" $(parseRoutesFile "config/routes")
+
+instance JSRoutable App where
+    jsRoutes = jsRoutesBuilder resourcesApp
 
 -- | A convenient synonym for creating forms.
 type Form x = Html -> MForm (HandlerT App IO) (FormResult x, Widget)
@@ -66,6 +70,7 @@ instance Yesod App where
             addStylesheet $ StaticR css_bootstrap_css
             addScriptRemote "https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
             addScript $ StaticR js_typeahead_js
+            addScript JSRoutesR
             $(widgetFile "default-layout")
         withUrlRenderer $(hamletFile "templates/default-layout-wrapper.hamlet")
 

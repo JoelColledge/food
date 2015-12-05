@@ -23,6 +23,7 @@ library
                      Handler.Home
                      Handler.MultiField
                      Handler.Recipes
+                     Yesod.Routes.JavaScript
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -80,6 +81,7 @@ library
                  , vector
                  , time
                  , ixset
+                 , mtl
                  , food-database
 
 executable         food-webapp

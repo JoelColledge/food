@@ -24,6 +24,7 @@ import Network.Wai.Middleware.RequestLogger (Destination (Logger),
                                              mkRequestLogger, outputFormat)
 import System.Log.FastLogger                (defaultBufSize, newStdoutLoggerSet,
                                              toLogStr)
+import Yesod.Routes.JavaScript
 
 import qualified FoodDatabase as FDB
 
