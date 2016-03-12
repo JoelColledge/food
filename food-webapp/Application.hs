@@ -11,6 +11,8 @@ module Application
     , handler
     ) where
 
+import GHC.IO.Encoding
+
 import Control.Monad.Logger                 (liftLoc)
 import Import
 import Language.Haskell.TH.Syntax           (qLocation)
@@ -111,6 +113,8 @@ develMain = develMainHelper getApplicationDev
 -- | The @main@ function for an executable running this site.
 appMain :: IO ()
 appMain = do
+    setLocaleEncoding utf8
+
     -- Get the settings from all relevant sources
     settings <- loadAppSettingsArgs
         -- fall back to compile-time values, set to [] to require values at runtime
