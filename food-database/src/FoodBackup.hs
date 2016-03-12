@@ -30,7 +30,7 @@ backup db = do
   createCheckpoint db
   createArchive db
   let archiveFileName = formatTime defaultTimeLocale "archive--%F--%H-%M-%S.zip" now
-  callProcess "zip" ["-r", archiveFileName, "food-db/Archive"]
+  callProcess "zip" ["-r", archiveFileName, "food-db"]
   callProcess "./dropbox_upload.sh" [archiveFileName]
 
   -- TODO: Check success and clear Archive
