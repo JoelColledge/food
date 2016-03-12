@@ -16,3 +16,11 @@ cabal.sandbox.config
 .DS_Store
 *.swp
 *.keter
+
+
+Categories.csv
+Recipes.csv
+Recipes.csv-orig
+Sources.csv
+auth_key
+food-db

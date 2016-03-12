@@ -21,6 +21,7 @@ module FoodDatabase (
     maybeToRating,
     ratingToMaybe,
 
+    showRecipeTable,
     printRecipeTable,
 
     importFullRecipes,
