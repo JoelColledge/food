@@ -25,6 +25,7 @@ library
                      Handler.Recipes
                      Yesod.Routes.JavaScript
                      FoodDatabase
+                     FoodBackup
 
     if flag(dev) || flag(library-only)
         cpp-options:   -DDEVELOPMENT
@@ -85,6 +86,8 @@ library
                  , mtl
                  , acid-state
                  , safecopy
+                 , old-locale
+                 , process
 
 executable         food-webapp
     if flag(library-only)

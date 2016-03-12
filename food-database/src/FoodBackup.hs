@@ -2,6 +2,8 @@ module FoodBackup (
     backup,
   ) where
 
+import Prelude
+
 import Data.Acid
 
 import Data.IxSet(toList)
