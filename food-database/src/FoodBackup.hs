@@ -2,6 +2,8 @@ module FoodBackup (
     backup,
   ) where
 
+import Data.Acid
+
 import Data.IxSet(toList)
 import qualified Data.Text.IO as T(writeFile)
 import Data.Time.Clock(getCurrentTime)
@@ -14,12 +16,21 @@ import FoodDatabase
 
 backup :: Context -> IO ()
 backup db = do
+  now <- getCurrentTime
+
   -- Pretty print and send to dropbox
   recipeSet <- getRecipes db
-  now <- getCurrentTime
-  let fileName = formatTime defaultTimeLocale "recipesdump--%F--%H-%M-%S" now
-  T.writeFile fileName (showRecipeTable (toList recipeSet))
-  _ <- createProcess (proc "./dropbox_upload.sh" [fileName])
-  return ()
+  let dumpFileName = formatTime defaultTimeLocale "recipesdump--%F--%H-%M-%S" now
+  T.writeFile dumpFileName (showRecipeTable (toList recipeSet))
+  callProcess "./dropbox_upload.sh" [dumpFileName]
 
-  -- TODO: acid-state backup
+  -- acid-state backup
+  createCheckpoint db
+  createArchive db
+  let archiveFileName = formatTime defaultTimeLocale "archive--%F--%H-%M-%S.zip" now
+  callProcess "zip" ["-r", archiveFileName, "food-db/Archive"]
+  callProcess "./dropbox_upload.sh" [archiveFileName]
+
+  -- TODO: Check success and clear Archive
+
+  return ()
