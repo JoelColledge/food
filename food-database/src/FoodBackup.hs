@@ -5,7 +5,8 @@ module FoodBackup (
 import Data.IxSet(toList)
 import qualified Data.Text.IO as T(writeFile)
 import Data.Time.Clock(getCurrentTime)
-import Data.Time.Format(formatTime, defaultTimeLocale)
+import Data.Time.Format(formatTime)
+import System.Locale(defaultTimeLocale)
 
 import System.Process
 

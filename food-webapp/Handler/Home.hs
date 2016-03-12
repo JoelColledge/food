@@ -4,6 +4,7 @@ import Import
 import Yesod.Form.Bootstrap3 (BootstrapFormLayout (..), renderBootstrap3)
 
 import qualified FoodDatabase as FDB
+import qualified FoodBackup as FDB
 
 getHomeR :: Handler Html
 getHomeR = do
@@ -27,6 +28,15 @@ postHomeR = do
     defaultLayout $ do
         setTitle "Colledge Food"
         $(widgetFile "homepage")
+
+postBackupR :: Handler Html
+postBackupR = do
+    App {..} <- getYesod
+    liftIO (FDB.backup appDatabase)
+
+    let imported = False
+
+    redirect HomeR
 
 sampleForm :: Form ()
 sampleForm = renderBootstrap3 BootstrapBasicForm $ mempty

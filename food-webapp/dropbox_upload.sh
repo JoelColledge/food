@@ -11,3 +11,5 @@ curl -X POST https://content.dropboxapi.com/2/files/upload \
   --header "Dropbox-API-Arg: {\"path\": \"/$FILE\",\"mode\": \"add\",\"autorename\": true,\"mute\": false}" \
   --header "Content-Type: application/octet-stream" \
   --data-binary @"$FILE"
+
+echo

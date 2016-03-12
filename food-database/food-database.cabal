@@ -30,5 +30,6 @@ library
                , ixset
                , text
                , time
+               , old-locale
                , containers
                , process

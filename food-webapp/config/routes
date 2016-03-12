@@ -6,6 +6,7 @@
 /jsRoutes JSRoutesR GET
 
 / HomeR GET POST
+/backup BackupR POST
 /recipes RecipesR GET
 /recipes/#Text SingleRecipeR GET POST
 /addrecipe AddRecipeR GET POST

@@ -16,4 +16,10 @@
          Import CSV! <span class="glyphicon glyphicon-upload"></span>
   <hr />
 
+  <li #form>
+    <form method=post action=@{BackupR}>
+      <button .btn .btn-primary type="submit">
+         Backup!
+  <hr />
+
 <ol>
