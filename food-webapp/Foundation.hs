@@ -70,6 +70,7 @@ instance Yesod App where
             addStylesheet $ StaticR css_bootstrap_css
             addScriptRemote "https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"
             addScript $ StaticR js_typeahead_js
+            addScript $ StaticR js_jqueryareyousure_js
             addScript JSRoutesR
             $(widgetFile "default-layout")
         withUrlRenderer $(hamletFile "templates/default-layout-wrapper.hamlet")

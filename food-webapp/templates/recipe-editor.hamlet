@@ -13,12 +13,12 @@ $if not $ null errorMsgs
 <p>
   $case formType
     $of NewRecipe
-      <form method=post action=@{AddRecipeR} enctype=#{formEnctype}>
+      <form #recipe-form method=post action=@{AddRecipeR} enctype=#{formEnctype}>
         ^{formWidget}
         <button .btn .btn-primary type="submit">
             Add
     $of UpdateRecipe name
-      <form method=post action=@{SingleRecipeR name} enctype=#{formEnctype}>
+      <form #recipe-form method=post action=@{SingleRecipeR name} enctype=#{formEnctype}>
         ^{formWidget}
         <button .btn .btn-primary type="submit">
             Update
