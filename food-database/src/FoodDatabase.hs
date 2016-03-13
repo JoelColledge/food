@@ -13,6 +13,7 @@ module FoodDatabase (
     Rating(..),
     Properties(..),
     Ingredients(..),
+    Scale(..),
     Recipe(..),
 
     PartialText(..),
@@ -84,6 +85,29 @@ $(deriveSafeCopy 0 'base ''Properties)
 newtype Ingredients = Ingredients { getIngredients :: [(Text, Maybe Double, Text)] } deriving (Eq, Ord, Show, Typeable)
 $(deriveSafeCopy 0 'base ''Ingredients)
 
+data Scale = Scale {
+    getServes :: Maybe Double,
+    getRectangular :: Maybe (Double, Double),
+    getRound :: Maybe Double,
+    getArbitrary :: Maybe Double
+  } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Scale)
+
+emptyScale :: Scale
+emptyScale = Scale Nothing Nothing Nothing Nothing
+
+data Recipe_v0 = Recipe_v0 {
+    recipe_v0_seq :: Seq,
+    recipe_v0_name :: Name,
+    recipe_v0_category :: Category,
+    recipe_v0_source :: RecipeSource,
+    recipe_v0_rating :: Rating,
+    recipe_v0_properties :: Properties,
+    recipe_v0_comments :: Text,
+    recipe_v0_ingredients :: Ingredients
+  } deriving (Eq, Ord, Show, Typeable)
+$(deriveSafeCopy 0 'base ''Recipe_v0)
+
 data Recipe = Recipe {
     recipe_seq :: Seq,
     recipe_name :: Name,
@@ -92,9 +116,23 @@ data Recipe = Recipe {
     recipe_rating :: Rating,
     recipe_properties :: Properties,
     recipe_comments :: Text,
-    recipe_ingredients :: Ingredients
+    recipe_ingredients :: Ingredients,
+    recipe_scale :: Scale
   } deriving (Eq, Ord, Show, Typeable)
-$(deriveSafeCopy 0 'base ''Recipe)
+$(deriveSafeCopy 1 'extension ''Recipe)
+
+instance Migrate Recipe where
+  type MigrateFrom Recipe = Recipe_v0
+  migrate recipe_v0 = Recipe
+      (recipe_v0_seq recipe_v0)
+      (recipe_v0_name recipe_v0)
+      (recipe_v0_category recipe_v0)
+      (recipe_v0_source recipe_v0)
+      (recipe_v0_rating recipe_v0)
+      (recipe_v0_properties recipe_v0)
+      (recipe_v0_comments recipe_v0)
+      (recipe_v0_ingredients recipe_v0)
+      emptyScale
 
 newtype PartialText = PartialText { getPartialText :: Text } deriving (Eq, Ord, Show, Typeable)
 
@@ -192,6 +230,7 @@ getCategories database = do
 emptyRecipe :: Recipe
 emptyRecipe = Recipe (SeqInt 0) (Name "") (Category "")
     RecipeUnknown RatingNone (Properties Map.empty) "" (Ingredients [])
+    emptyScale
 
 maybeToRating :: Maybe Int -> Rating
 maybeToRating (Just a) = Rating a
@@ -213,7 +252,8 @@ recipeToCells recipe =
       T.pack . show . recipe_rating,
       T.pack . show . getProperties . recipe_properties,
       recipe_comments,
-      T.pack . show . getIngredients . recipe_ingredients]
+      T.pack . show . getIngredients . recipe_ingredients,
+      T.pack . show . recipe_scale]
 
 columnWidths :: [[Text]] -> [Int]
 columnWidths cols = map (maximum . map (T.length)) (transpose cols)
@@ -308,7 +348,8 @@ readCsvRecipe bookMap categoryMap line = case csvLineFields line of
           recipe_rating = maybeToRating $ maybeDecimal ratingText,
           recipe_properties = readProperties prepMinsText totalMinsText,
           recipe_comments = comments,
-          recipe_ingredients = Ingredients []})
+          recipe_ingredients = Ingredients [],
+          recipe_scale = emptyScale})
     _ -> Left "Failed to match recipe fields"
 
 readCsvRecipes :: Context -> BookMap -> CategoryMap -> FilePath -> IO ()
